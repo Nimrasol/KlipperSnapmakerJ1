@@ -1,0 +1,504 @@
+/* KlipperScreen theme after the Snapmaker J1 display application
+ *
+ * Colors from the stock application (res/values/colors.xml): page
+ * background, card gradient, orange primary gradient, grey text levels.
+ * Installed as styles/snapmaker-j1 by install.sh.
+ */
+@define-color bg #1a1c28;
+@define-color card-top #3d3f4d;
+@define-color card-bottom #2d2f40;
+@define-color track #191b27;
+@define-color text #f7f8fa;
+@define-color text-body #c4c5cc;
+@define-color text-secondary #9b9ca6;
+@define-color text-explain #737480;
+@define-color disabled #595a66;
+@define-color primary #ff8a00;
+@define-color primary-start #ffab00;
+@define-color primary-end #f56a00;
+@define-color pressed-start #ff5500;
+@define-color pressed-end #ff9500;
+@define-color active #595a66;
+@define-color echo #18b65b;
+@define-color warning #ff6b00;
+@define-color error #fc5244;
+@define-color heating #ffd600;
+@define-color lines #595a66;
+@define-color text-inv #1a1c28;
+@define-color color1 #ff8a00;
+@define-color color2 #fc5244;
+@define-color color3 #18b65b;
+@define-color color4 #226bff;
+@define-color switch-scale-bg #ff8a00;
+
+* {
+    color: @text;
+    font-family: Roboto, "Noto Sans", "DejaVu Sans", sans-serif;
+}
+
+label {
+    color: @text;
+}
+
+junction,
+list row,
+treeview.view,
+window,
+.content {
+    background-color: @bg;
+}
+
+/* Title bar: time and temperatures in the grey of the stock status bar */
+.title_bar,
+.title_bar label {
+    color: @text-secondary;
+}
+
+/* Every tile is a stock card: vertical gradient, rounded */
+button {
+    background-color: @card-bottom;
+    background-image: linear-gradient(to bottom, @card-top, @card-bottom);
+    border: none;
+    border-radius: .6em;
+}
+
+button label {
+    color: @text;
+}
+
+button:active {
+    background-image: linear-gradient(to bottom, @active, @card-top);
+}
+
+button:focus {
+    outline: none;
+}
+
+button:disabled {
+    opacity: 1;
+    background-image: none;
+    background-color: @card-bottom;
+}
+
+button:disabled label,
+button.color1:disabled label,
+button.color2:disabled label,
+button.color3:disabled label,
+button.color4:disabled label {
+    color: @disabled;
+}
+
+/* The menu colors become the stock accents instead of colored bars */
+button.color1,
+button.color2,
+button.color3,
+button.color4 {
+    border: none;
+    border-radius: .6em;
+    padding: .25em;
+}
+
+/* Selected items get an orange outline, the chosen option of a row of
+ * toggle buttons the orange primary gradient */
+.button_active {
+    /* inset, so that the outline does not make the button larger */
+    box-shadow: inset 0 0 0 .15em @primary;
+}
+
+button.active,
+button.horizontal_togglebuttons_active,
+.horizontal_togglebuttons_active {
+    background-color: @primary;
+    background-image: linear-gradient(to right, @primary-start,
+                                      @primary-end);
+}
+
+button.active label,
+.horizontal_togglebuttons_active label {
+    color: @text;
+}
+
+.horizontal_togglebuttons {
+    border: .1em solid @lines;
+    border-right-width: 0;
+    background-image: none;
+    background-color: @card-bottom;
+    border-radius: 0;
+}
+
+.horizontal_togglebuttons:first-child {
+    border-top-left-radius: 2em;
+    border-bottom-left-radius: 2em;
+}
+
+.horizontal_togglebuttons:last-child {
+    border-top-right-radius: 2em;
+    border-bottom-right-radius: 2em;
+    border-right-width: .1em;
+}
+
+button.update {
+    background-image: linear-gradient(to right, @primary-start,
+                                      @primary-end);
+    border: none;
+    border-radius: 2em;
+}
+
+button.invalid {
+    background-image: none;
+    background-color: @error;
+    border: none;
+    border-radius: 2em;
+}
+
+button.status,
+button.file-list {
+    background-image: none;
+    background-color: transparent;
+}
+
+/* Switches: the stock thumb (orange or grey); on the page the track is
+ * the card color so that it stays visible */
+switch {
+    background-color: @card-top;
+    background-image: none;
+    border: none;
+    border-radius: 2em;
+}
+
+switch:checked {
+    background-color: @card-top;
+}
+
+switch image {
+    color: transparent;
+    -gtk-icon-source: none;
+}
+
+switch slider {
+    background-color: @text-secondary;
+    background-image: none;
+    border: none;
+    border-radius: 50%;
+    min-width: 2em;
+    min-height: 2em;
+    margin: .25em;
+}
+
+switch:checked slider {
+    background-color: @primary;
+}
+
+treeview.view check {
+    background-color: @track;
+    border: .1em solid @text-secondary;
+    border-radius: .3em;
+}
+
+treeview.view check:checked {
+    background-color: @primary;
+    border-color: @primary;
+    -gtk-icon-source: url("./styles/snapmaker-j1/images/complete.svg");
+}
+
+check,
+radio {
+    background-color: @track;
+    background-image: none;
+    border: .1em solid @text-secondary;
+    color: @text;
+}
+
+check {
+    border-radius: .3em;
+}
+
+radio {
+    border-radius: 50%;
+}
+
+check:checked,
+radio:checked {
+    background-color: @primary;
+    border-color: @primary;
+}
+
+/* Sliders and progress bars; on the page the track is the card color */
+trough {
+    background-color: @card-top;
+    border: none;
+    border-radius: 1em;
+}
+
+trough highlight,
+trough progress {
+    background-color: @primary;
+    background-image: linear-gradient(to right, @primary-start,
+                                      @primary-end);
+    border: none;
+    border-radius: 1em;
+}
+
+.option_slider_max trough highlight {
+    background-image: none;
+    background-color: @error;
+}
+
+scale trough slider {
+    background-color: @text;
+    background-image: none;
+    border: none;
+    border-radius: 50%;
+}
+
+scale mark {
+    color: @text-explain;
+}
+
+progressbar trough {
+    min-height: .6em;
+}
+
+progressbar progress {
+    min-height: .6em;
+}
+
+scrollbar,
+scrollbar button,
+scrollbar trough {
+    background-color: transparent;
+}
+
+scrollbar slider {
+    background-color: @lines;
+}
+
+entry {
+    background-color: @track;
+    border: .1em solid @lines;
+    border-radius: .5em;
+    color: @text;
+}
+
+entry:focus {
+    border-color: @primary;
+}
+
+menu,
+menuitem,
+popover,
+combobox button,
+combobox menuitem {
+    background-color: @card-bottom;
+    border-color: @lines;
+}
+
+combobox button {
+    background-image: none;
+}
+
+popover button {
+    background-image: none;
+    background-color: @card-bottom;
+}
+
+separator {
+    background-color: @lines;
+}
+
+textview text {
+    color: @text-body;
+}
+
+textview .time {
+    color: @text-explain;
+}
+
+.frame-item {
+    border-bottom: 1px solid @lines;
+}
+
+/* Dialogs: stock popup card, choices as colored text in the bottom row */
+.dialog {
+    background-color: @card-bottom;
+    background-image: linear-gradient(to bottom, @card-top, @card-bottom);
+    border: none;
+    border-radius: .75em;
+}
+
+.dialog label {
+    color: @text-body;
+}
+
+.dialog button {
+    background-image: none;
+    background-color: transparent;
+    border: none;
+    border-top: .05em solid @lines;
+    border-radius: 0;
+}
+
+.dialog button label {
+    font-weight: 500;
+}
+
+.dialog-primary label,
+.dialog-default label,
+.dialog-info label {
+    color: @primary;
+}
+
+.dialog-secondary label {
+    color: @text-body;
+}
+
+.dialog-warning label {
+    color: @warning;
+}
+
+.dialog-error label {
+    color: @error;
+}
+
+.dialog-primary,
+.dialog-default,
+.dialog-info,
+.dialog-secondary,
+.dialog-warning,
+.dialog-error {
+    border-bottom: none;
+}
+
+.dialog .image-button {
+    border-top: none;
+}
+
+/* Toasts: dark card with a colored edge */
+.message_popup {
+    border: none;
+    border-radius: .75em;
+}
+
+.message_popup_echo,
+.message_popup_echo button {
+    background-color: @card-bottom;
+    background-image: none;
+    border-left: .4em solid @echo;
+}
+
+.message_popup_warning,
+.message_popup_warning button {
+    background-color: @card-bottom;
+    background-image: none;
+    border-left: .4em solid @warning;
+}
+
+.message_popup_error,
+.message_popup_error button {
+    background-color: @card-bottom;
+    background-image: none;
+    border-left: .4em solid @error;
+}
+
+.message {
+    background-color: @card-bottom;
+    border: none;
+    border-left: .4em solid @error;
+    border-radius: .75em;
+}
+
+.message button {
+    background-image: linear-gradient(to right, @primary-start,
+                                      @primary-end);
+    border-radius: 2em;
+}
+
+.message button label {
+    color: @text;
+}
+
+.warning {
+    background-color: @warning;
+}
+
+.error {
+    background-color: @error;
+}
+
+/* Number pad and keyboard */
+.numpad_key {
+    border-color: @bg;
+}
+
+.keyboard_pad {
+    background-color: @bg;
+}
+
+/* Print status page */
+.printing-status,
+.printing-progress-text,
+.printing-status-label {
+    color: @text;
+}
+
+.printing-info button {
+    background-image: none;
+    background-color: transparent;
+}
+
+.printing-info-secondary label,
+.print-info {
+    color: @text-body;
+}
+
+/* Four heaters (both nozzles, bed, board fan) fit without scrolling */
+.heater-grid button {
+    border-radius: .5em;
+    min-height: 2.6em;
+    margin: .15em;
+}
+
+.fan_slider {
+    color: @text;
+}
+
+.filament_sensor_detected {
+    background-color: @echo;
+}
+
+.filament_sensor_empty {
+    background-color: @error;
+}
+
+.endstop-open {
+    background-color: @echo;
+}
+
+.endstop-triggered {
+    background-color: @error;
+}
+
+.spoolman_low {
+    color: @warning;
+}
+
+/* Lock screen and screensaver keep the plain page */
+.screensaver,
+.screensaver button,
+.lock button {
+    background-image: none;
+}
+
+/* Side action bar: plain icons on the page, like the stock toolbar */
+.action_bar button,
+.action_bar button:disabled {
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 1em;
+}
+
+.action_bar button:active {
+    background-color: @card-bottom;
+    background-image: none;
+}

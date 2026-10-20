@@ -18,15 +18,18 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 KLIPPER_DIR="${KLIPPER_DIR:-$HOME/klipper}"
 BUILD_DIR="$REPO_DIR/firmware/build"
 OUT_DIR="$REPO_DIR/firmware/out"
+# Klipper version the patch was made for and this release is tested with
+TESTED=$(awk '$1 == "klipper" {print $3 " (" $2 ")"}' \
+    "$REPO_DIR/versions.conf")
+INSTALLED=$(git -C "$KLIPPER_DIR" describe --tags --always)
 
 rm -rf "$BUILD_DIR" "$OUT_DIR"
 mkdir -p "$BUILD_DIR" "$OUT_DIR"
 git -C "$KLIPPER_DIR" archive HEAD | tar -x -C "$BUILD_DIR"
 cd "$BUILD_DIR"
 if ! git apply "$REPO_DIR/firmware/klipper-gd32f305-snapmaker.patch"; then
-    echo "The patch does not apply to Klipper $(git -C "$KLIPPER_DIR" \
-        describe --always); it was made for $(cat \
-        "$REPO_DIR/firmware/KLIPPER_BASE")."
+    echo "The patch does not apply to Klipper $INSTALLED; it was made"
+    echo "for Klipper $TESTED (versions.conf)."
     exit 1
 fi
 cp "$REPO_DIR/firmware/snapmaker-j1.config" .config
@@ -36,5 +39,8 @@ cp out/klipper.bin "$OUT_DIR/"
 python3 "$REPO_DIR/scripts/snapmaker_j1_package.py" out/klipper.bin \
     --update-bin "$OUT_DIR/update.bin" --mc-bin "$OUT_DIR/mc.bin" \
     --swd-header "$OUT_DIR/boot-header.bin"
-echo "Firmware for Klipper $(git -C "$KLIPPER_DIR" describe --always)" \
-    "in $OUT_DIR"
+echo "Firmware for Klipper $INSTALLED in $OUT_DIR"
+case "$TESTED" in
+    "$INSTALLED "*) ;;
+    *) echo "Note: this release is tested with Klipper $TESTED" ;;
+esac

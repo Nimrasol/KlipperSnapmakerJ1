@@ -308,8 +308,8 @@ KlipperScreen installed:
 1. Install this repository:
    ```
    cd ~
-   git clone https://github.com/Nimrasol/klipper-snapmaker-j1.git
-   ./klipper-snapmaker-j1/install.sh --apk base.apk
+   git clone https://github.com/Nimrasol/KlipperSnapmakerJ1.git
+   ./KlipperSnapmakerJ1/install.sh --apk base.apk
    ```
    This links the host modules into `~/klipper/klippy/extras`, the
    configuration into `~/printer_data/config/snapmaker_j1` (included
@@ -318,7 +318,7 @@ KlipperScreen installed:
    and the mains failure pin in the printer configuration.
 2. Build and package the main controller firmware:
    ```
-   ./klipper-snapmaker-j1/firmware/build.sh
+   ./KlipperSnapmakerJ1/firmware/build.sh
    ```
    The script applies `firmware/klipper-gd32f305-snapmaker.patch` (the
    GD32F305 chip option and the factory bootloader support) to a copy
@@ -480,4 +480,4 @@ S200/S6/S7` and `G1029` (reports the replacement commands).
   bootloader (protocol summarized above).
 * Klipper host platform on the display module (Linux image for the
   SC20-W), planned in
-  [klipper-snapmaker-j1-os](https://github.com/Nimrasol/-klipper-snapmaker-j1-os).
+  [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os).

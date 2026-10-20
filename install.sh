@@ -77,7 +77,7 @@ elif ! grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
 fi
 
 # Moonraker update manager entry for this repository
-ln -sfn "$REPO_DIR/moonraker/klipper-snapmaker-j1.conf" \
+ln -sfn "$REPO_DIR/moonraker/KlipperSnapmakerJ1.conf" \
     "$J1_CONFIG_DIR/moonraker.conf"
 touch "$MOONRAKER_CONF"
 if ! grep -qF "[include snapmaker_j1/moonraker.conf]" "$MOONRAKER_CONF"

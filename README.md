@@ -1,4 +1,4 @@
-# klipper-snapmaker-j1
+# KlipperSnapmakerJ1
 
 Klipper support for the Snapmaker J1 IDEX printer: the printer specific
 parts that stock [Klipper](https://github.com/Klipper3d/klipper),
@@ -17,8 +17,8 @@ This project is not affiliated with or endorsed by Snapmaker.
 
 | Repository | Content |
 | --- | --- |
-| **klipper-snapmaker-j1** (this one) | Klipper modules, printer configuration, KlipperScreen add-on and theme, main controller firmware patch |
-| [klipper-snapmaker-j1-os](https://github.com/Nimrasol/-klipper-snapmaker-j1-os) | Linux image for the J1 display module (Quectel SC20-W), the Klipper host |
+| **KlipperSnapmakerJ1** (this one) | Klipper modules, printer configuration, KlipperScreen add-on and theme, main controller firmware patch |
+| [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Linux image for the J1 display module (Quectel SC20-W), the Klipper host |
 
 ## Features
 
@@ -51,8 +51,8 @@ On the Klipper host, with Klipper, Moonraker and KlipperScreen installed:
 
 ```
 cd ~
-git clone https://github.com/Nimrasol/klipper-snapmaker-j1.git
-./klipper-snapmaker-j1/install.sh --apk base.apk
+git clone https://github.com/Nimrasol/KlipperSnapmakerJ1.git
+./KlipperSnapmakerJ1/install.sh --apk base.apk
 sudo systemctl restart moonraker klipper KlipperScreen
 ```
 
@@ -68,7 +68,7 @@ of your own printer (`/data/app/com.snapmaker.j1-*/base.apk`).
 ### Main controller firmware
 
 ```
-./klipper-snapmaker-j1/firmware/build.sh
+./KlipperSnapmakerJ1/firmware/build.sh
 ```
 
 builds the firmware from the installed Klipper and writes `update.bin`
@@ -79,7 +79,7 @@ the main controller.
 ## Updates
 
 Updates of this repository appear in the update panel of KlipperScreen,
-Mainsail and Fluidd (`[update_manager klipper-snapmaker-j1]`).  Klipper
+Mainsail and Fluidd (`[update_manager KlipperSnapmakerJ1]`).  Klipper
 and KlipperScreen are updated through their own entries.
 
 ## Documentation

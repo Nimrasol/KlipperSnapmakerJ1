@@ -150,5 +150,7 @@ if ! grep -qF "[include $J1_MENU]" "$KS_CONF"; then
     add_user_lines "[include $J1_MENU]"
 fi
 
-echo "Installed. Restart the services:"
+echo "Installed. Restart Moonraker, Klipper and KlipperScreen, eg"
 echo "  sudo systemctl restart moonraker klipper KlipperScreen"
+echo "or on KlipperSnapmakerJ1-os"
+echo "  sudo supervisorctl restart moonraker klipper KlipperScreen"

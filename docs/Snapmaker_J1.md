@@ -302,6 +302,51 @@ The stock firmware lowers the bed by 5mm after a mains failure.
 Klipper cannot run new moves after an emergency stop, so the nozzle
 remains above the print until the recovery homes Z.
 
+## Compatibility
+
+Releases are tagged `vX.Y.Z` (the update manager shows this version).
+Each release is made and tested with the versions listed in its
+[versions.conf](../versions.conf); for this release:
+
+| Component | Version | Commit | Date |
+| --- | --- | --- | --- |
+| [Klipper](https://github.com/Klipper3d/klipper) | v0.13.0-809-gc63b2951 | `c63b2951` | 2026-10-18 |
+| [Moonraker](https://github.com/Arksine/moonraker) | v0.11.0-3-g9e676eb | `9e676eba` | 2026-09-28 |
+| [KlipperScreen](https://github.com/KlipperScreen/KlipperScreen) | v0.4.7-198-g911c75b | `911c75bf` | 2026-10-18 |
+| [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Debian 12 (bookworm) armhf, Python 3.11, stock kernel 3.10.49 | | |
+
+What depends on each version, and how it was tested:
+
+* **Klipper:** the firmware patch (`src/stm32`, applies to this commit)
+  and the host modules, which use Klipper internals (`probe`,
+  `dual_carriage`, the runout helper of `filament_switch_sensor`,
+  `virtual_sdcard`, `configfile`, `save_variables`).  Tested with batch
+  runs of the printer configuration, all calibration workflows, SD card
+  printing and the power loss recovery; the firmware builds.
+* **KlipperScreen:** the add-on interface (`addons/`, `_load_panel`), the
+  base panel, `ScreenPanel.prettify` and the fan, pins and job status
+  panels the add-on adjusts, and the theme files.  Tested with all
+  calibration workflows and 71 pages of KlipperScreen against a simulated
+  J1 (layout checks included).
+* **Moonraker:** the update manager entry and the supervisord service
+  provider of the image.  Tested in the user space test of the image
+  (Moonraker connected to Klipper, all repositories valid and unmodified
+  in the update manager).
+
+The update manager keeps Klipper, Moonraker and KlipperScreen as clones of
+their own repositories, so newer versions can be installed as on any
+printer; they are not tested with this release.  After a Klipper update,
+rebuild and install the main controller firmware when Klipper reports a
+protocol mismatch (`firmware/build.sh`, which also names the tested
+version).  To return to the tested versions:
+
+```
+git -C ~/klipper checkout -B master <commit from versions.conf>
+git -C ~/klipper branch -u origin/master master
+```
+
+and restart Klipper (likewise for Moonraker and KlipperScreen).
+
 ## Building and installing
 
 On the Klipper host (the display module), with Klipper, Moonraker and

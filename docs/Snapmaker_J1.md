@@ -35,8 +35,10 @@ version; the active application is the one installed in
 * Clock: 25MHz crystal, 120MHz system clock (HSE/5 -> PLL2 x10 ->
   PREDIV1 /5 -> PLL x12), APB1 60MHz.
 * Host link: USART1 remapped to PB6 (TX) / PB7 (RX), connected to the
-  display module (Linux `/dev/ttyMSM1`, Android `/dev/ttyHSL1`).  The
-  stock firmware uses 115200 baud.
+  display module (`/dev/ttyHSL1` with the stock kernel, `/dev/ttyMSM1`
+  with a mainline kernel).  The stock firmware uses 115200 baud, Klipper
+  230400: the UART driver of the stock kernel supports 115200, 230400,
+  460800, 921600 baud and higher rates, but not 250000.
 
 ### Flash layout
 
@@ -342,7 +344,7 @@ it; PD4 is therefore an initial pin of the firmware and never switched
 off.  To return to the stock firmware, request the bootloader with
 Klipper stopped (see [Bootloader_Entry.md](https://www.klipper3d.org/Bootloader_Entry.html)):
 ```
-echo $'~ \x1c Request Serial Bootloader!! ~' >> /dev/ttyMSM1
+echo $'~ \x1c Request Serial Bootloader!! ~' >> /dev/ttyHSL1
 ```
 and install a stock update package with the display's USB firmware
 update, or program the stock `mc.bin` via SWD.  (When the stock display

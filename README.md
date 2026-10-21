@@ -13,12 +13,13 @@ updated on its own through the Moonraker update manager.
 
 This project is not affiliated with or endorsed by Snapmaker.
 
-## Related repository
+## Related repositories
 
 | Repository | Content |
 | --- | --- |
 | **KlipperSnapmakerJ1** (this one) | Klipper modules, printer configuration, KlipperScreen add-on and theme, main controller firmware patch |
 | [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Linux image for the J1 display module (Quectel SC20-W), the Klipper host |
+| [Nimrasol/klipper](https://github.com/Nimrasol/klipper/tree/j1), branch `j1` | Klipper fork with the firmware changes (GD32F305, J1 factory bootloader) as commits on Klipper; the same changes as `firmware/klipper-gd32f305-snapmaker.patch`. The printer runs unmodified Klipper |
 
 ## Features
 

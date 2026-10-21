@@ -44,6 +44,8 @@ IMAGES = [
     'pic_slide_indicator_right',
     # Thumbs up of the success page
     'pic_like_160x160',
+    # Filament runout and change dialog
+    'pic_warning_filament_runout_120x120',
 ]
 # Test prints: calibration check, vibration compensation, XY test lines
 GCODES = {

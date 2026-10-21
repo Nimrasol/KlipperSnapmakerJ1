@@ -12,17 +12,23 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
+from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
-from . import calibration, style
+from . import calibration, filament, style
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
 PANEL = "snapmaker_calibration"
+FILAMENT_PANEL = "snapmaker_filament"
 THEME = "snapmaker-j1"
 # Klipper object names that KlipperScreen would show as "Extruder" and
 # "Extruder1"; the other devices are named in the printer config
-NAMES = {"extruder": "Left Nozzle", "extruder1": "Right Nozzle"}
+NAMES = {"extruder": "Left Nozzle", "extruder1": "Right Nozzle",
+         "filament_sensor_t0": "Left Filament",
+         "filament_sensor_t1": "Right Filament"}
+# KlipperScreen lists only Klipper's own filament sensor types
+FILAMENT_SENSOR = "snapmaker_j1_filament_sensor "
 
 
 def init(screen):
@@ -32,6 +38,8 @@ def init(screen):
     def _load_panel(panel):
         if panel == PANEL:
             return calibration
+        if panel == FILAMENT_PANEL:
+            return filament
         module = load_panel(panel)
         if panel == "job_status":
             _patch_progress_ring(screen, module.Panel)
@@ -61,6 +69,28 @@ def init(screen):
     screen.state_printing = _state_printing
     screen.state_ready = _state_ready
 
+    # A print paused for a filament runout or change (M600) opens the
+    # stock refill dialog instead of the extrude panel
+    state_paused = screen.state_paused
+
+    def _state_paused():
+        def got(result, method, params, *args):
+            try:
+                tool = result["result"]["status"][
+                    "gcode_macro _SNAPMAKER_STATE"]["runout_tool"]
+            except (KeyError, TypeError):
+                tool = -1
+            if tool not in (0, 1) or screen.snapmaker_calibration_print:
+                state_paused()
+                return
+            screen.state_printing()
+            screen.show_panel(FILAMENT_PANEL, _("Filament"))
+
+        screen._ws.api.query_objects(
+            {"gcode_macro _SNAPMAKER_STATE": ["runout_tool"]}, got)
+
+    screen.state_paused = _state_paused
+
     # The J1 is switched off with its power switch and loses no data when
     # the power is cut (power loss recovery); the shutdown button of the
     # action bar is not needed.  The emergency stop still shows while
@@ -82,6 +112,19 @@ def init(screen):
         return NAMES.get(name) or prettify(name)
 
     ScreenPanel.prettify = staticmethod(_prettify)
+
+    # The analog filament sensors in the extrude panel (status and on/off
+    # switch; the module stores the switch state)
+    get_filament_sensors = Printer.get_filament_sensors
+    if not getattr(get_filament_sensors, "snapmaker_j1", False):
+        def _get_filament_sensors(self):
+            if self.sensors is None:
+                get_filament_sensors(self).extend(
+                    self.get_config_section_list(FILAMENT_SENSOR))
+            return self.sensors
+
+        _get_filament_sensors.snapmaker_j1 = True
+        Printer.get_filament_sensors = _get_filament_sensors
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
 
 

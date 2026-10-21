@@ -300,17 +300,47 @@ move (driver error) is logged and the touch runs without StallGuard.
 adc_pin:
 extruder:
 #check_distance: 3
-#threshold: 0.00366
+#threshold:
 #   Minimum change of the normalized reading per check_distance of
-#   extrusion (stock: 15 counts of 4096 on revision 2 boards, 8 on
-#   revision 1).
+#   extrusion. The default follows hardware_version of [snapmaker_j1]
+#   as in the stock firmware: 15/4096 on revision 2 boards, 8/4096 on
+#   revision 1.
 #check_count: 3
-#dead_space_min: 0.0146
-#dead_space_max: 0.991
-#dead_space_distance: 4
+#   Consecutive checks without motion that report a runout or jam.
+#dead_space_min:
+#dead_space_max:
+#   Readings outside this range are "dead space" where the sensor
+#   changes little (revision 2: 60/4096 and 4060/4096, revision 1: 0
+#   and 1433/4096).
+#dead_space_checks: 2
+#   Additional checks before a runout in the dead space (stock: 4mm in
+#   steps of its 2mm setting).
 #pause_on_runout, runout_gcode, insert_gcode, event_delay, pause_delay:
 #   See the "filament_switch_sensor" section.
 ```
+
+The sensors check while the toolhead moves; a runout only acts while a
+print runs (`_SNAPMAKER_FILAMENT_RUNOUT`): the print pauses when the
+sensor of a printing toolhead reports it, in backup mode the print
+continues on the other toolhead once.  `SET_FILAMENT_SENSOR` and the
+stock `M412 S<0|1> T<0|1>` switch a sensor; the state is kept in the
+save_variables file (`snap_j1_<name>_enabled`) like the stock EEPROM
+setting.  `RESUME` and `SNAPMAKER_POWER_LOSS_RESUME` prime the
+toolheads and refuse to continue when an enabled sensor of a printing
+toolhead saw no filament motion (stock: power loss resume).  The
+KlipperScreen add-on shows both sensors with their switch in the
+extrude panel.
+
+When a print pauses for a runout or an `M600` filament change, the
+macros store the toolhead in `_SNAPMAKER_STATE` (`runout_tool`,
+`runout_reason`) and the add-on opens the stock refill dialog instead
+of the extrude panel: unload, insert the filament, heat and feed 100mm
+at 240mm/min (stock), then "Continue Printing" (`RESUME`) or load again.
+In duplication and mirror mode the dialog selects the toolhead and only
+that extruder moves.  `LOAD_FILAMENT` and `UNLOAD_FILAMENT [TOOL=<0|1>]
+[TEMP=<°C>] [LENGTH=<mm>] [SPEED=<mm/min>]` use the active toolhead and
+the print temperature by default (220°C below 170°C); they are also
+used by the load/unload buttons of the KlipperScreen extrude panel.
 
 #### [snapmaker_j1_power_loss]
 
@@ -567,7 +597,7 @@ frequency.
 The macros accept the Snapmaker and Marlin commands found in J1 slicer
 profiles and the display's calibration prints: `T0`/`T1`, `M104`/`M109`
 with `T`, `M190 R`, `M106`/`M107` with `P`, `M201`, `M203`, `M204`
-(limited by the noise mode), `M205 V`, `M355`, `M593`, `M600`, `M605
+(limited by the noise mode), `M205 V`, `M355`, `M412`, `M593`, `M600`, `M605
 S0-S4`, `M900`, `M906` (with `I1` for X2), `M1999`, `M2000 S111/S113/
 S200/S6/S7` and `G1029` (reports the replacement commands).
 

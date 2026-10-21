@@ -16,6 +16,10 @@ FILE_FLAG = b"snapmaker update.bin"
 IMAGE_TYPE_MC = 3
 STATUS_NONE = 0xAA00
 STATUS_APP_NORMAL = 0xAA05
+# Port and SACP id the bootloader requests the image from: the display is
+# on the second port (USART2), as the stock firmware stores it
+BOOT_PORT_HMI = 1
+SACP_ID_HMI = 2
 APP_START = 0x08002800
 APP_LIMIT = 0x080FD000
 # The display's USB update package ("update.bin") holds a 75 byte table
@@ -38,7 +42,7 @@ def build_header(app, version, status):
     pack_time = time.strftime("%Y.%m.%d:%H:%M:%S").encode()
     fields = [FILE_FLAG, 1, IMAGE_TYPE_MC, 1, 0, 0,
               version.encode()[:31], pack_time[:20], status, len(app),
-              checksum(app), APP_START, 0, 0, 0]
+              checksum(app), APP_START, BOOT_PORT_HMI, SACP_ID_HMI, 0]
     hdr = struct.pack(HEADER_FORMAT, *fields)
     hdr = hdr[:-4] + struct.pack("<I", checksum(hdr[:-4]))
     return hdr

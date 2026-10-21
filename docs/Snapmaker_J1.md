@@ -34,11 +34,15 @@ version; the active application is the one installed in
   machine name.
 * Clock: 25MHz crystal, 120MHz system clock (HSE/5 -> PLL2 x10 ->
   PREDIV1 /5 -> PLL x12), APB1 60MHz.
-* Host link: USART1 remapped to PB6 (TX) / PB7 (RX), connected to the
+* Host link: USART2 remapped to PD5 (TX) / PD6 (RX), connected to the
   display module (`/dev/ttyHSL1` with the stock kernel, `/dev/ttyMSM1`
-  with a mainline kernel).  The stock firmware uses 115200 baud, Klipper
-  230400: the UART driver of the stock kernel supports 115200, 230400,
-  460800, 921600 baud and higher rates, but not 250000.
+  with a mainline kernel).  The stock firmware enables its display
+  protocol on this port (`event_serial[EVENT_SOURCE_HMI]`, the second
+  serial port), and the factory bootloader fetches stock updates through
+  it.  USART1 (PB6/PB7) carries the Marlin console and the bootloader's
+  text messages.  The stock firmware uses 115200 baud, Klipper 230400:
+  the UART driver of the stock kernel supports 115200, 230400, 460800,
+  921600 baud and higher rates, but not 250000.
 
 ### Flash layout
 
@@ -63,22 +67,37 @@ a stock `mc.bin`):
 | --- | --- |
 | 0 | `"snapmaker update.bin"` |
 | 22 | image type (must be 3) |
-| 81 | status (0xAA02 update requested, 0xAA03 updating, 0xAA04 update done, 0xAA05 application normal) |
+| 81 | status (0xAA01 waiting, 0xAA02 update requested, 0xAA03 updating, 0xAA04 update done, 0xAA05 application normal) |
 | 83 | application length |
 | 87 | application checksum |
 | 91 | application start (2KiB aligned, at least 0x08002800) |
+| 95 | port to fetch the image from (0 USART1, 1 USART2) |
+| 96 | SACP id to fetch the image from (2 display) |
 | 97 | header checksum over bytes 0-96 |
 
 Checksums are the inverted 32 bit sum of the big-endian 16 bit words.
-With status 0xAA05 and a matching application checksum the bootloader
-starts the application; with 0xAA02 it waits for an image from the
-display; any other status also makes it wait.  After an update it
-starts the new application once with status 0xAA04 and relies on the
-application to restore 0xAA05.  Updates use the SACP protocol (frame
-`AA 55 len16 ver dst crc8 src attr seq16 set id data sum16`): the
-bootloader accepts a new header (command set 0xAD, id 0x01), requests
-2KiB chunks by byte offset (0xAD/0x02, answered with result, offset,
-length and data) and reports the result (0xAD/0x03).
+The bootloader (V1.0.3-boot) listens on USART1 and USART2 at 115200
+baud and works with the status:
+
+* 0xAA05 and a matching application checksum: it waits 6 seconds for a
+  new header, then starts the application.
+* 0xAA02: it erases the application pages given by the header, sets
+  0xAA03 and requests the image from the port and id in the header.
+* After the last byte (0xAA04) it checks the application checksum,
+  reports the result and starts the new application; the application
+  restores 0xAA05.  A failed check, an invalid header or an interrupted
+  update (5 unanswered requests) leave it waiting for a new header.
+
+Updates use the SACP protocol (frame `AA 55 len16 ver dst crc8 src attr
+seq16 set id data sum16`, CRC-8 polynomial 0x07 over the first 6 bytes,
+inverted 16 bit word sum over the rest): the bootloader or the stock
+firmware accepts a new header (command set 0xAD, id 0x01, data: length
+and the 256 header bytes) after checking its checksum, image type, start
+address and length, stores it with 0xAA02 and starts the update; it
+requests 2KiB chunks by byte offset (0xAD/0x02, answered with result,
+offset, length and data) and reports the result (0xAD/0x03).  The
+bootloader only erases and writes the pages of the application and the
+header, never its own.
 
 ### Pins
 
@@ -160,7 +179,7 @@ E0 111, E1 011 (1 = high).
 | Pause / resume with parking, priming and wiping | `PAUSE`/`RESUME` macros, `SAVE_DUAL_CARRIAGE_STATE` | macros |
 | Power loss detection and recovery | state checkpoints, shutdown, `M23`/`M26`/`M24` resume | `snapmaker_j1_power_loss` |
 | Factory bootloader boot state | restore "application normal" at startup | MCU |
-| Firmware update via the display | `scripts/snapmaker_j1_package.py` | script |
+| Firmware update via the display | `scripts/snapmaker_j1_package.py`, `scripts/snapmaker_j1_flash.py` (stock update protocol to the factory bootloader) | script |
 | Calibration menu and workflows | KlipperScreen add-on | add-on |
 
 Not ported: the SACP display protocol (the stock display application
@@ -178,8 +197,8 @@ in the stock firmware) and the simultaneous T0/T1 parking move of
 * `STM32_FLASH_START_2800`: 10KiB bootloader offset.
 * `STM32_SNAPMAKER_BOOTLOADER` (`src/stm32/snapmaker_boot.c`): at
   startup it rewrites the update header status to 0xAA05 when it is not
-  set (as the stock firmware does), and a bootloader request sets
-  0xAA02 and resets so the factory bootloader waits for a new image.
+  set (as the stock firmware does); a bootloader request resets into the
+  factory bootloader, which waits 6 seconds for a new image.
 
 ### Host modules
 
@@ -469,11 +488,24 @@ KlipperScreen installed:
    `firmware/snapmaker-j1.config` (the options listed at the top of
    `printer-snapmaker-j1-2022.cfg`) and packages the result into
    `firmware/out`.
-3. Install the firmware, either
-   * through the stock display: copy `update.bin` to a USB stick and
-     use the display's firmware update from USB, or
-   * via SWD: program `klipper.bin` at 0x08002800 and
-     `boot-header.bin` at 0x080FD000 (keep the bootloader).
+3. Install the firmware with Klipper stopped:
+   ```
+   sudo supervisorctl stop klipper     # or: sudo systemctl stop klipper
+   ~/klippy-env/bin/python ~/KlipperSnapmakerJ1/scripts/snapmaker_j1_flash.py \
+       ~/KlipperSnapmakerJ1/firmware/out/mc.bin
+   sudo supervisorctl start klipper    # or: sudo systemctl start klipper
+   ```
+   The script checks the image (header, checksums, start address after
+   the bootloader, vector table), resets the main controller into its
+   factory bootloader (Klipper's serial bootloader request; the stock
+   firmware accepts the image itself) and sends the image the way the
+   stock display does: the factory bootloader checks the header, erases
+   and writes only the application pages and starts the new firmware
+   after checking its checksum.  If the update is interrupted (power
+   loss, closed connection) the main controller stays in its bootloader;
+   run the script again.  Before Klipper runs on the display module (the
+   first installation), `update.bin` on a USB stick with the stock
+   display's firmware update from USB does the same.
 
 Updates of this repository are offered by the Moonraker update manager
 (KlipperScreen "Update", Mainsail, Fluidd).  When an update of Klipper
@@ -482,16 +514,21 @@ firmware.
 
 The display module also powers the Klipper host when Klipper runs on
 it; PD4 is therefore an initial pin of the firmware and never switched
-off.  To return to the stock firmware, request the bootloader with
-Klipper stopped (see [Bootloader_Entry.md](https://www.klipper3d.org/Bootloader_Entry.html)):
-```
-echo $'~ \x1c Request Serial Bootloader!! ~' >> /dev/ttyHSL1
-```
-and install a stock update package with the display's USB firmware
-update, or program the stock `mc.bin` via SWD.  (When the stock display
-finds the main controller waiting in its bootloader it installs its
-cached package - after a Klipper installation that is the Klipper
-package.)
+off.  To return to the stock firmware, install a stock `mc.bin` or
+`update.bin` with the same script (for example the cached package of
+the stock display, `/data/data/com.snapmaker.j1/app_update/mc.bin`),
+then the stock display image.
+
+SWD (ST-Link etc.) is only needed when the bootloader itself is
+damaged.  The bootloader cannot be recreated from Klipper or the stock
+packages, so when using SWD:
+
+* first read and keep 0x08000000-0x080027FF (bootloader and serial
+  number) and 0x080F9800-0x080FFFFF (factory data, header, settings),
+* never use "mass erase", "erase chip" or "full chip erase", and do not
+  change the option bytes or the read protection,
+* program `klipper.bin` at 0x08002800 and `boot-header.bin` at
+  0x080FD000 with "erase sectors" (only the pages that are written).
 
 ## Calibration
 

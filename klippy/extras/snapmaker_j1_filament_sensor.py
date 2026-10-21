@@ -11,28 +11,58 @@ ADC_SAMPLE_TIME = 0.001
 ADC_SAMPLE_COUNT = 5
 CHECK_TIMEOUT = 0.250
 
+# Stock parameters per board revision (filament_sensor.h, counts of a
+# 12 bit reading): threshold, dead space minimum and maximum
+REVISION_DEFAULTS = {1: (8., 0., 1433.), 2: (15., 60., 4060.)}
+
 # The J1 filament sensor outputs an analog voltage that changes while
 # filament moves through it.  After every check_distance of extrusion
 # the reading must have changed by at least `threshold`.  Readings
 # close to the ends of the sensor range ("dead space") change little
 # even with moving filament, so they only report a problem after an
-# additional dead_space_distance of extrusion.
+# additional dead_space_checks checks.
+
+# The enable state (SET_FILAMENT_SENSOR, M412) survives restarts like the
+# stock setting stored in the EEPROM
+class J1RunoutHelper(filament_switch_sensor.RunoutHelper):
+    def __init__(self, config):
+        filament_switch_sensor.RunoutHelper.__init__(self, config)
+        self.variable = 'snap_j1_%s_enabled' % (self.name,)
+    def _handle_ready(self):
+        filament_switch_sensor.RunoutHelper._handle_ready(self)
+        svv = self.printer.lookup_object('save_variables', None)
+        if svv is not None:
+            self.sensor_enabled = bool(svv.allVariables.get(self.variable, 1))
+    def cmd_SET_FILAMENT_SENSOR(self, gcmd):
+        filament_switch_sensor.RunoutHelper.cmd_SET_FILAMENT_SENSOR(self, gcmd)
+        self.sensor_enabled = bool(self.sensor_enabled)
+        if self.printer.lookup_object('save_variables', None) is not None:
+            self.gcode.run_script_from_command(
+                "SAVE_VARIABLE VARIABLE=%s VALUE=%d"
+                % (self.variable, self.sensor_enabled))
+
 class J1FilamentSensor:
     def __init__(self, config):
         self.printer = config.get_printer()
         self.reactor = self.printer.get_reactor()
         self.extruder_name = config.get('extruder')
+        revision = 2
+        if config.has_section('snapmaker_j1'):
+            revision = config.getsection('snapmaker_j1').getint(
+                'hardware_version', 2)
+        threshold, dead_min, dead_max = REVISION_DEFAULTS.get(
+            revision, REVISION_DEFAULTS[2])
         self.check_distance = config.getfloat('check_distance', 3., above=0.)
-        self.threshold = config.getfloat('threshold', 15. / 4096., above=0.)
+        self.threshold = config.getfloat('threshold', threshold / 4096.,
+                                         above=0.)
         self.check_count = config.getint('check_count', 3, minval=1)
-        self.dead_space_min = config.getfloat('dead_space_min', 60. / 4096.,
-                                              minval=0.)
-        self.dead_space_max = config.getfloat('dead_space_max', 4060. / 4096.,
-                                              maxval=1.)
-        dead_space_distance = config.getfloat('dead_space_distance', 4.,
-                                              minval=0.)
-        self.dead_space_count = self.check_count + int(
-            dead_space_distance / self.check_distance + .5)
+        self.dead_space_min = config.getfloat('dead_space_min',
+                                              dead_min / 4096., minval=0.)
+        self.dead_space_max = config.getfloat('dead_space_max',
+                                              dead_max / 4096., maxval=1.)
+        # Stock: 4mm of dead space distance in steps of its 2mm setting
+        self.dead_space_count = self.check_count + config.getint(
+            'dead_space_checks', 2, minval=0)
         # ADC setup
         ppins = self.printer.lookup_object('pins')
         self.mcu_adc = ppins.setup_pin('adc', config.get('adc_pin'))
@@ -41,7 +71,7 @@ class J1FilamentSensor:
         self.mcu_adc.setup_adc_callback(self._adc_callback)
         query_adc = self.printer.load_object(config, 'query_adc')
         query_adc.register_adc(config.get_name(), self.mcu_adc)
-        self.runout_helper = filament_switch_sensor.RunoutHelper(config)
+        self.runout_helper = J1RunoutHelper(config)
         # Internal state
         self.extruder = None
         self.estimated_print_time = None
@@ -72,8 +102,13 @@ class J1FilamentSensor:
     def _handle_not_printing(self, print_time):
         self.reactor.update_timer(self.check_timer, self.reactor.NEVER)
     def _get_extruder_pos(self, eventtime):
+        # Filament moved by the extruder motor (its step count, like the
+        # stock firmware): unlike the E coordinate it does not jump when
+        # the extruder is synced to the other one for duplication
         print_time = self.estimated_print_time(eventtime)
-        return self.extruder.find_past_position(print_time)
+        stepper = self.extruder.extruder_stepper.stepper
+        return (stepper.get_past_mcu_position(print_time)
+                * stepper.get_step_dist())
     def _reset(self):
         self.start_value = None
         self.error_count = self.dead_space_count_now = 0

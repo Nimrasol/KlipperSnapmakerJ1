@@ -11,7 +11,10 @@ ADC_SAMPLE_TIME = 0.001
 ADC_SAMPLE_COUNT = 8
 ADC_VREF = 3.3
 BED_CHECK_TIME = 0.500
-FILE_HEADER_SIZE = 8192
+# The header of J1 slicer files starts with a thumbnail of several KiB;
+# Prusa/Orca style slicers write their settings to the end of the file
+FILE_HEADER_LIMIT = 512 * 1024
+FILE_TAIL_SIZE = 128 * 1024
 
 # Board revision voltage divider on the hw_version_pin (upper bounds)
 HW_VERSION_MV = [450., 700., 1400., 2000., 2700., 3200.]
@@ -24,6 +27,14 @@ NOZZLE_TYPES = [
     (698., 898., 'brass', 0.8),
     (1015., 1215., 'hardened_steel', 0.4),
 ]
+NOZZLE_NAMES = ["Nozzle L", "Nozzle R"]
+NOZZLE_TOLERANCE = 0.01
+
+# Header lines with the nozzle diameter of a tool: J1 profiles of Luban
+# ("Extruder 0 Nozzle Size:0.4"), older Luban versions
+# ("nozzle_0_diameter(mm): 0.4") and Cura ("EXTRUDER_TRAIN.0.NOZZLE.DIAMETER")
+FILE_NOZZLE_KEYS = ['Extruder %d Nozzle Size', 'nozzle_%d_diameter(mm)',
+                    'nozzle_%d_diameter', 'EXTRUDER_TRAIN.%d.NOZZLE.DIAMETER']
 
 # Values of the ";Extruder Mode:" header line written by the J1 slicer
 # profiles, mapped to the print modes of the J1 macros
@@ -78,13 +89,20 @@ class SnapmakerJ1:
             buttons = self.printer.load_object(config, 'buttons')
             buttons.register_buttons([bed_feedback_pin],
                                      self._bed_feedback_handler)
+        self.nozzle_check = {'filename': None, 'mismatch': False,
+                             'file': [None, None], 'machine': [None, None]}
         self.printer.register_event_handler('klippy:ready', self._handle_ready)
+        self.printer.register_event_handler('klippy:shutdown',
+                                            self._handle_shutdown)
         self.gcode.register_command(
             'SNAPMAKER_QUERY_HARDWARE', self.cmd_SNAPMAKER_QUERY_HARDWARE,
             desc=self.cmd_SNAPMAKER_QUERY_HARDWARE_help)
         self.gcode.register_command(
             'SNAPMAKER_FILE_MODE', self.cmd_SNAPMAKER_FILE_MODE,
             desc=self.cmd_SNAPMAKER_FILE_MODE_help)
+        self.gcode.register_command(
+            'SNAPMAKER_CHECK_NOZZLES', self.cmd_SNAPMAKER_CHECK_NOZZLES,
+            desc=self.cmd_SNAPMAKER_CHECK_NOZZLES_help)
     def _handle_ready(self):
         self.reactor.register_timer(self._check_hw_version,
                                     self.reactor.monotonic() + 2.)
@@ -124,6 +142,22 @@ class SnapmakerJ1:
                 info.update({'material': material, 'diameter': diameter})
                 break
         return info
+    def _missing_nozzles(self):
+        # The identification resistor reads out of range without a hotend
+        # (stock: "nozzle loss", heating of the nozzle is blocked)
+        return [NOZZLE_NAMES[i] for i in range(2)
+                if self.nozzle_adcs[i].get_mv() is not None
+                and self._nozzle_info(i)['material'] is None]
+    def _handle_shutdown(self):
+        # A missing hotend also opens its temperature sensor, which shuts
+        # down Klipper with a generic "ADC out of range" message
+        missing = self._missing_nozzles()
+        if not missing:
+            return
+        msg, category = self.printer.get_state_message()
+        self.printer.update_error_msg(msg, (
+            "%s not detected - check that the hotend is installed and its"
+            " cable is plugged in\n%s" % (" and ".join(missing), msg)))
     # Heated bed feedback
     def _bed_feedback_handler(self, eventtime, state):
         self.bed_feedback_state = state
@@ -152,6 +186,7 @@ class SnapmakerJ1:
                 'detected_hardware_version': self.detected_hw_version,
                 'nozzle_t0': self._nozzle_info(0),
                 'nozzle_t1': self._nozzle_info(1),
+                'nozzle_check': dict(self.nozzle_check),
                 'bed_feedback': self.bed_feedback_state}
     cmd_SNAPMAKER_QUERY_HARDWARE_help = "Report board revision and nozzles"
     def cmd_SNAPMAKER_QUERY_HARDWARE(self, gcmd):
@@ -169,20 +204,61 @@ class SnapmakerJ1:
                 i, desc, "%.0f" % info['adc_mv']
                 if info['adc_mv'] is not None else "?"))
         gcmd.respond_info("\n".join(msg))
+    # Print file header
+    def _read_file(self, filename):
+        # Returns the comment lines of the file header and of the file end
+        sdcard = self.printer.lookup_object('virtual_sdcard')
+        path = os.path.join(sdcard.sdcard_dirname, filename.lstrip('/'))
+        header, tail = [], []
+        try:
+            with open(path, 'rb') as f:
+                size = 0
+                for line in f:
+                    size += len(line)
+                    line = line.decode('utf-8', 'replace').strip()
+                    if line in (';Header End', ';END_OF_HEADER'):
+                        break
+                    if line and not line.startswith(';'):
+                        break
+                    header.append(line)
+                    if size > FILE_HEADER_LIMIT:
+                        break
+                f.seek(0, os.SEEK_END)
+                f.seek(max(0, f.tell() - FILE_TAIL_SIZE))
+                data = f.read().decode('utf-8', 'replace')
+                tail = [l.strip() for l in data.splitlines()
+                        if l.startswith(';')]
+        except (IOError, OSError):
+            logging.exception("Unable to read print file %s", path)
+        return header, tail
+    def _file_nozzle_diameters(self, header, tail):
+        diameters = [None, None]
+        for line in header:
+            key, sep, value = line[1:].partition(':')
+            for i in range(2):
+                if key.strip() in [k % (i,) for k in FILE_NOZZLE_KEYS]:
+                    try:
+                        diameters[i] = float(value.strip())
+                    except ValueError:
+                        pass
+        if diameters == [None, None]:
+            # Prusa/Orca style settings: "; nozzle_diameter = 0.4,0.4"
+            for line in tail:
+                key, sep, value = line[1:].partition('=')
+                if key.strip() != 'nozzle_diameter':
+                    continue
+                for i, v in enumerate(value.split(',')[:2]):
+                    try:
+                        diameters[i] = float(v.strip())
+                    except ValueError:
+                        pass
+        return diameters
     cmd_SNAPMAKER_FILE_MODE_help = (
         "Select the IDEX print mode from a print file header")
     def cmd_SNAPMAKER_FILE_MODE(self, gcmd):
-        filename = gcmd.get('FILENAME')
-        sdcard = self.printer.lookup_object('virtual_sdcard')
-        path = os.path.join(sdcard.sdcard_dirname, filename.lstrip('/'))
+        header, tail = self._read_file(gcmd.get('FILENAME'))
         mode = None
-        try:
-            with open(path, 'r') as f:
-                header = f.read(FILE_HEADER_SIZE)
-        except (IOError, OSError, UnicodeDecodeError):
-            logging.exception("Unable to read print file header %s", path)
-            header = ""
-        for line in header.splitlines():
+        for line in header:
             if line.startswith(';Extruder Mode:'):
                 mode = FILE_MODES.get(line.split(':', 1)[1].strip())
                 break
@@ -191,6 +267,33 @@ class SnapmakerJ1:
         gcmd.respond_info("Print file requests IDEX mode %s" % (mode,))
         self.gcode.run_script_from_command(
             "SNAPMAKER_SET_PRINT_MODE MODE=%s" % (mode,))
+    cmd_SNAPMAKER_CHECK_NOZZLES_help = (
+        "Compare the nozzle diameters of a print file with the installed"
+        " nozzles")
+    def cmd_SNAPMAKER_CHECK_NOZZLES(self, gcmd):
+        # Stock: the display asks before printing a file made for other
+        # nozzle diameters ("Inconsistent Nozzle Diameter")
+        filename = gcmd.get('FILENAME')
+        header, tail = self._read_file(filename)
+        file_diameters = self._file_nozzle_diameters(header, tail)
+        machine = [self._nozzle_info(i)['diameter'] for i in range(2)]
+        mismatch = False
+        for i in range(2):
+            if file_diameters[i] is None:
+                continue
+            if (machine[i] is None
+                or abs(machine[i] - file_diameters[i]) > NOZZLE_TOLERANCE):
+                mismatch = True
+        self.nozzle_check = {'filename': filename, 'mismatch': mismatch,
+                             'file': file_diameters, 'machine': machine}
+        if mismatch:
+            def fmt(d):
+                return "?" if d is None else "%.1f mm" % (d,)
+            gcmd.respond_info(
+                "Nozzle diameter mismatch - file: L %s, R %s; machine:"
+                " L %s, R %s" % (fmt(file_diameters[0]),
+                                 fmt(file_diameters[1]),
+                                 fmt(machine[0]), fmt(machine[1])))
 
 def load_config(config):
     return SnapmakerJ1(config)

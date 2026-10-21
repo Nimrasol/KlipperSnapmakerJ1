@@ -144,6 +144,8 @@ E0 111, E1 011 (1 = high).
 | Bed relay self check | continuous feedback monitoring of PA12 | `snapmaker_j1` |
 | Board revision detection | ADC check against the configured revision | `snapmaker_j1` |
 | Nozzle type detection | ADC classification, `SNAPMAKER_QUERY_HARDWARE` | `snapmaker_j1` |
+| Nozzle diameter check before a print ("Inconsistent Nozzle Diameter") | `SNAPMAKER_CHECK_NOZZLES` from `SDCARD_PRINT_FILE`, `action:prompt` dialog | `snapmaker_j1` |
+| Missing hotend ("nozzle loss") | `max_temp` shutdown, message names the undetected nozzle | `snapmaker_j1` |
 | Fans (part, hotend, electronics) | `fan_generic`, `heater_fan`, `temperature_fan` | none |
 | Case light (M355) | `[output_pin]` | macros |
 | Nozzle contact probing (Z) | probe interface using the active nozzle's switch | `snapmaker_j1_probe` |
@@ -202,9 +204,29 @@ nozzle_id_pin_t1: PA6
 
 Commands: `SNAPMAKER_QUERY_HARDWARE` reports the detected board revision
 and nozzle types; `SNAPMAKER_FILE_MODE FILENAME=<file>` selects the IDEX
-mode from the file header.  Status: `hardware_version`,
-`detected_hardware_version`, `nozzle_t0`, `nozzle_t1` (`material`,
-`diameter`, `adc_mv`), `bed_feedback`.
+mode from the file header; `SNAPMAKER_CHECK_NOZZLES FILENAME=<file>`
+compares the nozzle diameters of a file with the installed nozzles.
+Status: `hardware_version`, `detected_hardware_version`, `nozzle_t0`,
+`nozzle_t1` (`material`, `diameter`, `adc_mv`), `nozzle_check`
+(`filename`, `mismatch`, `file`, `machine`), `bed_feedback`.
+
+Like the stock display, `SDCARD_PRINT_FILE` asks before printing a file
+made for other nozzle diameters.  The diameters come from the header
+(`;Extruder 0 Nozzle Size:` of the J1 profiles, `;nozzle_0_diameter(mm):`,
+Cura's `;EXTRUDER_TRAIN.0.NOZZLE.DIAMETER:`) or from the slicer settings
+at the end of the file (`; nozzle_diameter = 0.4,0.4` of PrusaSlicer and
+OrcaSlicer); a tool without a diameter in the file is not checked, an
+undetected nozzle counts as a mismatch.  The dialog uses Klipper's
+`action:prompt` protocol, so KlipperScreen, Mainsail and Fluidd show it:
+"Cancel" (`_SNAPMAKER_NOZZLE_CANCEL`) or "Continue Anyway"
+(`_SNAPMAKER_NOZZLE_CONTINUE`, prints the file).
+`SDCARD_PRINT_FILE FILENAME=<file> NOZZLE_CHECK=0` prints without the
+check (the calibration prints, as in the stock firmware).
+
+A missing hotend opens its temperature sensor and shuts Klipper down
+(`max_temp`, "ADC out of range"); the shutdown message then starts with
+"Nozzle L/R not detected - check that the hotend is installed and its
+cable is plugged in" (stock: "nozzle loss" exception).
 
 #### [snapmaker_j1_probe]
 

@@ -147,6 +147,8 @@ E0 111, E1 011 (1 = high).
 | Fans (part, hotend, electronics) | `fan_generic`, `heater_fan`, `temperature_fan` | none |
 | Case light (M355) | `[output_pin]` | macros |
 | Nozzle contact probing (Z) | probe interface using the active nozzle's switch | `snapmaker_j1_probe` |
+| Calibration touches (fast touch, slow touches, switch opening point, trimmed mean) | stock sequence on the probe switch | `snapmaker_j1_probe` |
+| StallGuard crash detection while probing | DIAG line armed with the nozzle switch on one trsync, thresholds from SG_RESULT | `snapmaker_j1_probe` |
 | Z offset calibration | `PROBE` + `SNAPMAKER_Z_ENDSTOP_ADJUST` | `snapmaker_j1_probe` |
 | Heated bed leveling (knobs) | `[screws_tilt_adjust]` | none |
 | XY offset calibration of T1 | horizontal probing of the bed center feature | `snapmaker_j1_probe` |
@@ -161,10 +163,9 @@ E0 111, E1 011 (1 = high).
 
 Not ported: the SACP display protocol (the stock display application
 cannot control Klipper), CNC/laser functions of the shared display code,
-StallGuard crash detection during calibration probing (the probe
-switches and the build plate check below are used instead) and the
-simultaneous T0/T1 parking move of `M2000 S200` (tool changes park the
-inactive carriage first).
+the optional StallGuard check of Z homing (`M2000 S14`, off by default
+in the stock firmware) and the simultaneous T0/T1 parking move of
+`M2000 S200` (tool changes park the inactive carriage first).
 
 ## Klipper changes
 
@@ -227,27 +228,70 @@ calibration_points:
 xy_probe_z:
 #   Height for horizontal probing (calibrations use -1.2mm minus the
 #   build plate thickness).
+#z_probe_distance: 30
+#z_probe_speed: 5
+#z_probe_slow_speed: 0.5
+#z_live_speed: 1.25
 #xy_probe_distance: 15
-#xy_probe_speed: 13.3
-#xy_probe_slow_speed: 1.3
-#xy_retract_dist: 1
-#xy_samples: 5
-#xy_tolerance: 0.25
+#xy_probe_speed: 13.333
+#xy_probe_slow_speed: 1.333
+#probe_backoff: 1
+#probe_max_delta: 0.25
+#probe_samples: 5
+#   Calibration touches (stock calibtration.cpp): one fast touch over
+#   up to the probe distance, then probe_samples slow touches starting
+#   probe_backoff above the surface, each reaching 2 * probe_max_delta
+#   further (twice that for the first slow touch).  The live height
+#   measurement uses z_live_speed for its slow touches.
 #max_t1_offset: 5
 #max_center_offset: 5
+#stallguard_pin_stepper_x:
+#stallguard_pin_dual_carriage:
+#stallguard_pin_stepper_y:
+#stallguard_pin_stepper_z:
+#   DIAG (StallGuard) outputs of the drivers. Revision 2 boards: PD12,
+#   PE3, PB5, PE9; revision 1 boards: !PE3 for all four. Without these
+#   pins the fast touches run unguarded.
+#stallguard_measure: True
+#   Derive the thresholds from SG_RESULT during the first travel moves
+#   after a restart (stock: Z SG_RESULT/3 - 25 above 3mm/s, Y /10, X /12
+#   above 50mm/s).
+#stallguard_threshold_stepper_x: 20
+#stallguard_threshold_dual_carriage: 20
+#stallguard_threshold_stepper_y: 20
+#stallguard_threshold_stepper_z: 80
+#   Fixed SGTHRS values (no measurement for this driver). Unset, the
+#   stock defaults apply until a measurement replaces them.
 ```
 
 The module registers as the printer `probe` and uses the switch of the
 active carriage (the other carriage is parked first).  Besides the
 calibration session commands (see Calibration) it provides
-`SNAPMAKER_PROBE_XY_CENTER [TOOL=] [Z=]` and
+`SNAPMAKER_PROBE_XY_CENTER [TOOL=] [Z=]`,
 `SNAPMAKER_Z_ENDSTOP_ADJUST OFFSET=` (moves the Z origin up by OFFSET,
-updating `position_endstop` and `position_max` of `[stepper_z]`).  The
-descent for XY probing is a probing move: a nozzle contact before
-reaching the calibration height aborts with a request to remove the
-build plate.  Status: `calibration` (`active`, `datum`,
+updating `position_endstop` and `position_max` of `[stepper_z]`) and
+`SNAPMAKER_QUERY_STALLGUARD` (thresholds, their source and the DIAG
+line states).  The descent for XY probing is a probing move: a nozzle
+contact before reaching the calibration height aborts with a request to
+remove the build plate.  Status: `calibration` (`active`, `datum`,
 `height_difference`, `height_valid`, `z_origin_offset`, `t1_offset`,
-`bed_center_offset`) in addition to the probe status.
+`bed_center_offset`) and `stallguard` (`threshold`, `sg_result` per
+driver) in addition to the probe status.
+
+Calibration touches follow the stock firmware: the nozzle approaches
+until its switch closes, then moves back until the switch opens; the
+opening position is the result.  A measurement takes one fast touch
+(discarded) and five slow ones and averages them without the highest
+and lowest.  Only the regular probe commands (`PROBE`, `BED_MESH`, ...)
+use Klipper's trigger position.
+
+During the fast touch the DIAG line of the moving driver (Z, Y or the
+active X carriage) is armed together with the nozzle switch on the same
+trsync, with `SGTHRS` set and `TCOOLTHRS`/StealthChop enabled for that
+driver only.  A stall stops the move at once and aborts the calibration
+with "StallGuard stopped the ... axis"; the axis must be homed again (as
+in the stock firmware).  A DIAG line that is already active before the
+move (driver error) is logged and the touch runs without StallGuard.
 
 #### [snapmaker_j1_filament_sensor]
 
@@ -496,13 +540,22 @@ The same workflows are available as macros without the touch screen:
 individual steps are `SNAPMAKER_CAL_BEGIN`, `SNAPMAKER_CAL_HEAT
 [WAIT=1]`, `SNAPMAKER_CAL_CLEAN_POSITION`, `SNAPMAKER_CAL_MOVE POINT=
 [TOOL=] [Z=] [KEEP_Z=1]`, `SNAPMAKER_CAL_JOG DISTANCE=`,
-`SNAPMAKER_CAL_DATUM POINT=`, `SNAPMAKER_CAL_HEIGHT POINT= TOOL=`,
-`SNAPMAKER_CAL_SET_ORIGIN`, `SNAPMAKER_CAL_XY`,
+`SNAPMAKER_CAL_DATUM POINT= [ORIGIN=0]`, `SNAPMAKER_CAL_HEIGHT POINT=
+TOOL=`, `SNAPMAKER_CAL_SET_ORIGIN`, `SNAPMAKER_CAL_XY`,
 `SNAPMAKER_CAL_NOZZLE_OFFSET X_ADJUST= Y_ADJUST=` and
 `SNAPMAKER_CAL_END SAVE=0|1`.  Points 0-5 are the stock calibration
 points (bed center, rear center, front left, front right, rear left,
 rear right), corrected by the bed center offset measured by the XY
 calibration.
+
+`SNAPMAKER_CAL_DATUM` also sets the Z origin (bed reference plus plate
+thickness) unless `ORIGIN=0` is given; like the stock firmware, the bed
+leveling stores it and the nozzle height calibration does not.
+Repeated `SNAPMAKER_CAL_HEIGHT` calls at the same point work like the
+stock live measurement: the first touch is fast and StallGuard guarded,
+the next ones are slow and only as long as the last change requires; a
+bed that was lowered beyond that or raised into the nozzle is found
+again with a fast touch.
 
 `SNAPMAKER_SET_PLATE_THICKNESS THICKNESS=` (4.7-5.5mm, default 5.0)
 shifts the Z origin when a build plate of another thickness is used.

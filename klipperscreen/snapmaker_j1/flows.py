@@ -140,7 +140,8 @@ def build():
                     " orange bar reaches the middle. If no orange bar is"
                     " shown, keep turning as indicated."),
                   'pic_leveling_z_calibration_auxiliary_content',
-                  enter="SNAPMAKER_CAL_DATUM POINT=3", point=3, tool=1,
+                  enter="SNAPMAKER_CAL_DATUM POINT=3 ORIGIN=0", point=3,
+                  tool=1,
                   invert=True),
             restore_z, success],
         'z_manual': [

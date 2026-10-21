@@ -25,8 +25,9 @@ This project is not affiliated with or endorsed by Snapmaker.
 
 * **Main controller firmware** (GD32F305): chip support at 120MHz and the
   J1 factory bootloader (`firmware/`).  The firmware is built from stock
-  Klipper with a small patch and installed with the stock USB update or
-  via SWD.
+  Klipper with a small patch and installed from the display module
+  through the factory bootloader, with the stock update protocol
+  (`scripts/snapmaker_j1_flash.py`).
 * **Klipper host modules** (`klippy/extras/`):
   * `snapmaker_j1`: hardware revision check, nozzle type detection, bed
     heater feedback, IDEX mode from the print file header
@@ -72,10 +73,20 @@ of your own printer (`/data/app/com.snapmaker.j1-*/base.apk`).
 ./KlipperSnapmakerJ1/firmware/build.sh
 ```
 
-builds the firmware from the installed Klipper and writes `update.bin`
-(stock display USB update), `klipper.bin` and `boot-header.bin` (SWD) to
-`firmware/out`.  Rebuild it when a Klipper update changes the protocol to
-the main controller.
+builds the firmware from the installed Klipper and writes `mc.bin`,
+`update.bin` (stock display USB update), `klipper.bin` and
+`boot-header.bin` (SWD) to `firmware/out`.  Install it with Klipper
+stopped:
+
+```
+~/klippy-env/bin/python ~/KlipperSnapmakerJ1/scripts/snapmaker_j1_flash.py     ~/KlipperSnapmakerJ1/firmware/out/mc.bin
+```
+
+The factory bootloader checks the image and writes only the application
+pages; an interrupted update is completed by running the script again,
+and a stock `mc.bin` returns to the stock firmware.  Rebuild and install
+the firmware when a Klipper update changes the protocol to the main
+controller.
 
 ## Updates
 

@@ -1,5 +1,5 @@
 diff --git a/src/stm32/Kconfig b/src/stm32/Kconfig
-index e9aa0879..87fd306b 100644
+index e9aa0879..cb0ace07 100644
 --- a/src/stm32/Kconfig
 +++ b/src/stm32/Kconfig
 @@ -111,6 +111,9 @@ choice
@@ -85,8 +85,8 @@ index e9aa0879..87fd306b 100644
 +        The Snapmaker J1 factory bootloader only starts the
 +        application if its update header in flash reports a normal
 +        application state. Select this option to restore that state
-+        at startup (as the stock firmware does) and to enter the
-+        bootloader's update mode on a bootloader request.
++        at startup (as the stock firmware does) and to reset into the
++        bootloader on a bootloader request.
 +
  config ARMCM_RAM_VECTORTABLE
      bool
@@ -135,7 +135,7 @@ index a30bb621..871724e1 100644
  struct cline lookup_clock_line(uint32_t periph_base);
 diff --git a/src/stm32/snapmaker_boot.c b/src/stm32/snapmaker_boot.c
 new file mode 100644
-index 00000000..ee85f49b
+index 00000000..33c3d082
 --- /dev/null
 +++ b/src/stm32/snapmaker_boot.c
 @@ -0,0 +1,118 @@
@@ -156,14 +156,15 @@ index 00000000..ee85f49b
 +// application checksum it contains matches the flash contents.  After
 +// an update the bootloader leaves an "update done" status and relies on
 +// the application to restore "app normal" (as the stock firmware does
-+// on every boot).  Requesting the "update start" status and resetting
-+// makes the bootloader wait for a new image from the display.
++// on every boot).  After a reset the bootloader waits a few seconds for
++// a new update header (SACP command 0xad/0x01, as the stock display sends
++// it) before it starts the application; a bootloader request therefore
++// only resets.  The bootloader never erases or writes its own pages.
 +
 +#define HDR_ADDR 0x080FD000      // Update info header (4KiB flash page)
 +#define HDR_SIZE 101             // sizeof(update_packet_info_t)
 +#define HDR_STATUS_OFFSET 81
 +#define HDR_CHECKSUM_OFFSET 97
-+#define STATUS_UPDATE_START 0xAA02
 +#define STATUS_APP_NORMAL 0xAA05
 +
 +// Pages above 512KiB are in the second flash bank, which has its own
@@ -248,12 +249,11 @@ index 00000000..ee85f49b
 +}
 +DECL_INIT(snapmaker_boot_init);
 +
-+// Reboot into the factory bootloader and wait for a new image
++// Reboot into the factory bootloader (scripts/snapmaker_j1_flash.py of
++// KlipperSnapmakerJ1 then sends the new image)
 +void
 +snapmaker_bootloader_request(void)
 +{
-+    if (header_is_valid())
-+        write_header_status(STATUS_UPDATE_START);
 +    irq_disable();
 +    NVIC_SystemReset();
 +}

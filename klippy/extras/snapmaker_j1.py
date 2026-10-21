@@ -107,7 +107,10 @@ class SnapmakerJ1:
         if self.detected_hw_version != self.hw_version:
             self.printer.invoke_shutdown(
                 "Snapmaker J1 board revision %d detected, but the"
-                " configuration is for revision %d"
+                " configuration is for revision %d - set hardware_version"
+                " and the revision dependent pins (sense_pin of"
+                " [snapmaker_j1_power_loss], stallguard_pin_* of"
+                " [snapmaker_j1_probe])"
                 % (self.detected_hw_version, self.hw_version))
         return self.reactor.NEVER
     # Nozzle identification

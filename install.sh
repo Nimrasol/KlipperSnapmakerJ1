@@ -75,6 +75,25 @@ elif ! grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
     echo "Add this line to printer.cfg (and remove sections it replaces):"
     echo "  [include $J1_PRINTER_CFG]"
 fi
+# The calibrated values must be in printer.cfg itself: SAVE_CONFIG cannot
+# change values of an included file.  Defaults of an uncalibrated printer,
+# added after the include unless printer.cfg (or its SAVE_CONFIG block)
+# already has them
+add_calibrated() {
+    local section=$1 value=$2
+    if ! grep -qE "^(#\*# )?\[$section\]" "$CONFIG_DIR/printer.cfg"; then
+        sed -i "\|^\[include $J1_PRINTER_CFG\]|a\\
+\\
+# Calibrated by the J1 calibration menu (SAVE_CONFIG)\\
+[$section]\\
+position_endstop: $value\\
+position_max: $value" "$CONFIG_DIR/printer.cfg"
+    fi
+}
+if grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
+    add_calibrated stepper_z 205
+    add_calibrated dual_carriage 337
+fi
 
 # Moonraker update manager entry for this repository
 ln -sfn "$REPO_DIR/moonraker/KlipperSnapmakerJ1.conf" \

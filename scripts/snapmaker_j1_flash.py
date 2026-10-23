@@ -9,7 +9,7 @@ import sys, time, struct, argparse
 import serial
 
 # The stock display updates the main controller over the same UART that
-# Klipper uses (USART2 of the main controller, /dev/ttyHSL1 of the display)
+# Klipper uses (USART2 of the main controller, /dev/ttyMSM1 of the display)
 # with SACP frames of command set 0xad:
 #   0x01 display -> controller: 256 byte image header.  The stock firmware
 #        or the factory bootloader (V1.0.3, during the first seconds after
@@ -21,7 +21,11 @@ import serial
 #        its own pages (0x08000000-0x080027FF).
 #   0x03 bootloader -> display: result, then it starts the new application
 #        (or waits for another update if the checksum does not match).
-# Klipper resets into the bootloader on the serial bootloader request.
+# Klipper resets into the bootloader on the serial bootloader request, the
+# stock firmware on M1999.  The bootloader also listens on the USB port of
+# the main controller (USART1 through a CH340), so the script works there
+# as well, also when the firmware does not answer: switch the printer off
+# and on while the script waits.
 SOF = b"\xaa\x55"
 SACP_VERSION = 1
 ID_CONTROLLER = 1
@@ -35,6 +39,7 @@ CMD_RESULT = 0x03
 
 BOOT_BAUD = 115200
 KLIPPER_BOOTLOADER_REQUEST = b"~ \x1c Request Serial Bootloader!! ~"
+STOCK_RESET = b"M1999\n"
 
 # Image header ("mc.bin"), as checked by the bootloader
 HEADER_SIZE = 256
@@ -204,8 +209,9 @@ class FrameParser:
 ######################################################################
 
 class Flasher:
-    def __init__(self, port, image, verbose=False):
+    def __init__(self, port, image, verbose=False, reopen=None):
         self.port = port
+        self.reopen = reopen
         self.image = image
         self.verbose = verbose
         self.parser = FrameParser()
@@ -234,11 +240,21 @@ class Flasher:
         end = time.time() + timeout
         next_send = 0.
         while time.time() < end:
-            if time.time() >= next_send:
-                self.sequence = (self.sequence + 1) & 0xffff
-                self.send(ATTR_REQ, self.sequence, CMD_START, payload)
-                next_send = time.time() + 0.25
-            frames = self.receive()
+            try:
+                if time.time() >= next_send:
+                    self.sequence = (self.sequence + 1) & 0xffff
+                    self.send(ATTR_REQ, self.sequence, CMD_START, payload)
+                    next_send = time.time() + 0.25
+                frames = self.receive()
+            except (serial.SerialException, OSError):
+                # A USB serial adapter powered by the printer disappears
+                # while it is switched off
+                if self.reopen is None:
+                    raise
+                self.log("Port lost, waiting for it...")
+                self.port = self.wait_port(end)
+                self.parser = FrameParser()
+                continue
             for i, frame in enumerate(frames):
                 if frame.command_id == CMD_START and frame.payload:
                     result = frame.payload[0]
@@ -256,6 +272,18 @@ class Flasher:
         raise FlashError(
             "No answer from the main controller - check that Klipper is"
             " stopped, the port is right and the printer is switched on")
+    def wait_port(self, end):
+        try:
+            self.port.close()
+        except (serial.SerialException, OSError):
+            pass
+        while time.time() < end:
+            time.sleep(0.5)
+            try:
+                return self.reopen()
+            except FlashError:
+                pass
+        raise FlashError("The port did not come back")
     def handle(self, frame):
         # (the bootloader does not set the attribute of its answers)
         if frame.command_id == CMD_PACKAGE:
@@ -305,12 +333,18 @@ def main():
         " bootloader.  Stop Klipper first.")
     parser.add_argument("image", help="firmware/out/mc.bin, a stock mc.bin"
                         " or update.bin")
-    parser.add_argument("-d", "--device", default="/dev/ttyHSL1",
-                        help="serial port of the main controller"
-                        " (default /dev/ttyHSL1)")
+    parser.add_argument("-d", "--device", default="/dev/ttyMSM1",
+                        help="serial port of the main controller: the"
+                        " display link (default /dev/ttyMSM1) or its USB"
+                        " port (for example /dev/ttyUSB0 on another"
+                        " computer)")
     parser.add_argument("-b", "--baud", type=int, default=230400,
                         help="baud rate of the running Klipper firmware,"
                         " used for the bootloader request (default 230400)")
+    parser.add_argument("-w", "--wait", type=float, default=15.,
+                        help="seconds to wait for the bootloader (switch"
+                        " the printer off and on meanwhile if the firmware"
+                        " does not answer; default 15)")
     parser.add_argument("--check", action="store_true",
                         help="only check the image")
     parser.add_argument("-v", "--verbose", action="store_true",
@@ -325,16 +359,21 @@ def main():
         if args.check:
             return
         port = open_port(args.device, args.baud)
-        # Klipper resets into the bootloader; the stock firmware ignores
-        # the request and accepts the header itself
+        # Klipper resets into the bootloader on its request, the stock
+        # firmware on M1999 (USB port) or accepts the header itself
+        # (display port); the bootloader ignores both
         port.write(KLIPPER_BOOTLOADER_REQUEST)
         port.flush()
         time.sleep(0.1)
         port.baudrate = BOOT_BAUD
+        port.write(STOCK_RESET * 3)
+        port.flush()
+        time.sleep(0.1)
         port.reset_input_buffer()
-        flasher = Flasher(port, image, args.verbose)
+        flasher = Flasher(port, image, args.verbose,
+                          reopen=lambda: open_port(args.device, BOOT_BAUD))
         flasher.log("Waiting for the bootloader...")
-        flasher.start(timeout=15.)
+        flasher.start(timeout=args.wait)
         flasher.log("Image accepted, erasing and writing...")
         result = flasher.transfer(timeout=60.)
         if result:

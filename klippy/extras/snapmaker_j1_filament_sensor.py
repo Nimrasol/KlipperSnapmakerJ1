@@ -87,8 +87,9 @@ class J1FilamentSensor:
                                             self._handle_not_printing)
         self.printer.register_event_handler('idle_timeout:idle',
                                             self._handle_not_printing)
-    def _adc_callback(self, read_time, read_value):
-        self.last_value = read_value
+    def _adc_callback(self, samples):
+        # Batches of (print time, value), the last one is the newest
+        self.last_value = samples[-1][1]
     def _handle_ready(self):
         self.extruder = self.printer.lookup_object(self.extruder_name)
         self.estimated_print_time = (

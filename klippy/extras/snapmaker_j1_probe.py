@@ -754,10 +754,13 @@ class SnapmakerJ1Probe:
         # The bed homes to the Z maximum, so its endstop position doubles
         # as the travel limit and both must move together
         endstop = self._z_rail().get_homing_info().position_endstop - offset
+        # Not Klipper's usual "The SAVE_CONFIG command will ..." text:
+        # KlipperScreen asks to save on any message naming SAVE_CONFIG, and
+        # the calibration menu saves by itself
         gcmd.respond_info(
             "stepper_z: position_endstop: %.3f\n"
-            "The SAVE_CONFIG command will update the printer config file\n"
-            "and restart the printer." % (endstop,))
+            "Stored in printer.cfg when the configuration is saved"
+            % (endstop,))
         configfile = self.printer.lookup_object('configfile')
         configfile.set('stepper_z', 'position_endstop', "%.3f" % (endstop,))
         configfile.set('stepper_z', 'position_max', "%.3f" % (endstop,))

@@ -55,8 +55,9 @@ class AnalogInput:
         query_adc = printer.load_object(config, 'query_adc')
         query_adc.register_adc(name, self.mcu_adc)
         self.value = None
-    def _adc_callback(self, read_time, read_value):
-        self.value = read_value
+    def _adc_callback(self, samples):
+        # Batches of (print time, value), the last one is the newest
+        self.value = samples[-1][1]
     def get_mv(self):
         if self.value is None:
             return None

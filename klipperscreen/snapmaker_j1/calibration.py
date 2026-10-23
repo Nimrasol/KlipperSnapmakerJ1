@@ -27,6 +27,10 @@ INDICATOR_VALID = 0.08
 INDICATOR_VISUAL = 1.
 JOG_STEPS = [-1., -.1, -.05, .05, .1, 1.]
 OFFSET_STEP = .05
+# Build plate thickness setting (mm), as SNAPMAKER_SET_PLATE_THICKNESS
+PLATE_DEFAULT = 5.
+PLATE_MAX = 10.
+PLATE_STEP = .1
 
 
 def _rgb(color):
@@ -215,6 +219,7 @@ class Panel(ScreenPanel):
         self.choice = None
         self.offset = [0., 0.]
         self.step_ready = False
+        self.plate_thickness = self.plate_value = PLATE_DEFAULT
         self.menu_box = self._build_menu()
         self.content.add(self.menu_box)
         self._select(None, 0)
@@ -390,6 +395,11 @@ class Panel(ScreenPanel):
         row.pack_start(text, True, True, 0)
         self.detail.pack_start(row, True, True, 0)
         bottom = self._bottom_bar()
+        if item.get("setting") == "plate_thickness":
+            self._plate_controls(text, bottom)
+            self.detail.pack_start(bottom, False, False, 0)
+            self.detail.show_all()
+            return
         if item["assist"]:
             switch = Gtk.Switch(active=self.assist[item["key"]],
                                 valign=Gtk.Align.CENTER, can_focus=False)
@@ -404,6 +414,39 @@ class Panel(ScreenPanel):
         self.detail.pack_start(bottom, False, False, 0)
         self.detail.show_all()
 
+    # Build plate thickness: a setting, no workflow
+    def _plate_controls(self, text, bottom):
+        minus = self._button("-%.1f" % PLATE_STEP, "secondary", small=True)
+        plus = self._button("+%.1f" % PLATE_STEP, "secondary", small=True)
+        value = self._styled(Gtk.Label(width_chars=7), "snap-value")
+        minus.connect("clicked", self._change_plate, -PLATE_STEP, value)
+        plus.connect("clicked", self._change_plate, PLATE_STEP, value)
+        bottom.pack_start(self._bar_button(minus, "start"), False, False, 0)
+        bottom.pack_start(value, False, False, 0)
+        bottom.pack_start(plus, False, False, 0)
+        save = self._bar_button(self._button(_("Save"), "primary"), "end")
+        save.connect("clicked", self._save_plate)
+        bottom.pack_end(save, False, False, 0)
+        self.plate_widgets = (value, save)
+        self._update_plate()
+
+    def _change_plate(self, widget, delta, label):
+        self.plate_value = round(
+            min(max(self.plate_value + delta, 0.), PLATE_MAX), 2)
+        self._update_plate()
+
+    def _update_plate(self):
+        value, save = self.plate_widgets
+        value.set_label("%.1f mm" % (self.plate_value,))
+        save.set_sensitive(abs(self.plate_value - self.plate_thickness)
+                           > .001)
+
+    def _save_plate(self, widget):
+        # Klipper restarts to apply the moved Z origin
+        self._gcode("SNAPMAKER_SET_PLATE_THICKNESS THICKNESS=%.2f"
+                    % (self.plate_value,),
+                    lambda: self._screen._ws.api.gcode_script("SAVE_CONFIG"))
+
     def _assist_changed(self, switch, param, item):
         self.assist[item["key"]] = switch.get_active()
         self._gcode("SAVE_VARIABLE VARIABLE=snap_j1_assist_%s VALUE=%s"
@@ -411,20 +454,26 @@ class Panel(ScreenPanel):
         self._show_detail()
 
     def activate(self):
-        # Restore the assist mode choices stored in Klipper
+        # Restore the assist mode choices stored in Klipper and the build
+        # plate thickness in use
         def got(result, method, params, *args):
             try:
-                svv = result["result"]["status"]["save_variables"]["variables"]
+                status = result["result"]["status"]
+                svv = status["save_variables"]["variables"]
             except (KeyError, TypeError):
                 return
+            thickness = status.get("probe", {}).get("plate_thickness")
+            if thickness is not None:
+                self.plate_thickness = self.plate_value = thickness
             for key in self.assist:
                 self.assist[key] = bool(svv.get("snap_j1_assist_%s" % key,
                                                 True))
             if self.flow is None:
                 self._show_detail()
 
-        self._screen._ws.api.query_objects({"save_variables": ["variables"]},
-                                           got)
+        self._screen._ws.api.query_objects(
+            {"save_variables": ["variables"], "probe": ["plate_thickness"]},
+            got)
 
     # Workflow
     def _start(self, widget):

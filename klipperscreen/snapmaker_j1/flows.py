@@ -276,5 +276,14 @@ def build():
          'texts': (_("To improve the print quality with vibration"
                      " compensation, calibrate the compensation frequency"
                      " following the instructions on the screen."),)},
+        {'key': 'plate', 'title': _("Build Plate"), 'assist': False,
+         'setting': 'plate_thickness', 'flows': (),
+         'images': ('gif_calibration_j1_xy_offset_restore_machine',),
+         'texts': (_("Thickness of the build plate on the heated bed"
+                     " (5.0 mm for the PEI glass plate of the J1). The"
+                     " calibrations measure the bare bed; the nozzles"
+                     " start printing this much higher.\n\nSet it when"
+                     " you use another build plate. Klipper restarts to"
+                     " save it."),)},
     ]
     return menu, flows

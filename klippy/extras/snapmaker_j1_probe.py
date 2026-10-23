@@ -28,6 +28,8 @@ from . import probe
 
 HEIGHT_VALID_RANGE = 0.08
 LIVE_RETRACT = 2.
+# Thickest build plate SNAPMAKER_SET_PLATE_THICKNESS accepts (mm)
+MAX_PLATE_THICKNESS = 10.
 # Trigger reason of a driver DIAG line (the reasons of klippy/mcu.py
 # end at REASON_COMMS_TIMEOUT)
 REASON_STALLGUARD = 8
@@ -379,6 +381,11 @@ class SnapmakerJ1Probe:
         self.max_t1_offset = config.getfloat('max_t1_offset', 5., above=0.)
         self.max_center_offset = config.getfloat('max_center_offset', 5.,
                                                  above=0.)
+        # Build plate on the bed: Z 0 is its surface.  Stored in printer.cfg
+        # by SAVE_CONFIG together with the Z origin it shifts
+        self.plate_thickness_setting = config.getfloat(
+            'plate_thickness', 5., minval=0., maxval=MAX_PLATE_THICKNESS)
+        self.pending_endstop = None
         # Probe session handling
         self.active = None
         self.probe_session = probe.SampleAveragingHelper(
@@ -390,6 +397,7 @@ class SnapmakerJ1Probe:
         self._reset_calibration()
         gcode = self.printer.lookup_object('gcode')
         for cmd in ['PROBE_XY_CENTER', 'Z_ENDSTOP_ADJUST', 'QUERY_STALLGUARD',
+                    'SET_PLATE_THICKNESS',
                     'CAL_START', 'CAL_MOVE', 'CAL_DATUM', 'CAL_HEIGHT',
                     'CAL_SET_ORIGIN', 'CAL_XY', 'CAL_NOZZLE_OFFSET',
                     'CAL_FINISH']:
@@ -415,6 +423,7 @@ class SnapmakerJ1Probe:
             't1_offset': self.pending_t1,
             'bed_center_offset': self.pending_center}
         status['stallguard'] = self.stallguard.get_status()
+        status['plate_thickness'] = self.plate_thickness_setting
         return status
     def start_probe_session(self, gcmd):
         return self.probe_session.start_probe_session(gcmd)
@@ -750,10 +759,16 @@ class SnapmakerJ1Probe:
     def _z_rail(self):
         kin = self.printer.lookup_object('toolhead').get_kinematics()
         return [r for r in kin.rails if r.get_name() == 'stepper_z'][0]
-    def _store_z_origin(self, gcmd, offset):
+    def _store_z_origin(self, gcmd, offset, from_pending=False):
         # The bed homes to the Z maximum, so its endstop position doubles
-        # as the travel limit and both must move together
-        endstop = self._z_rail().get_homing_info().position_endstop - offset
+        # as the travel limit and both must move together.  Measurements
+        # are relative to the endstop in use, a plate thickness change to
+        # the one that will be saved
+        endstop = self._z_rail().get_homing_info().position_endstop
+        if from_pending and self.pending_endstop is not None:
+            endstop = self.pending_endstop
+        endstop -= offset
+        self.pending_endstop = endstop
         # Not Klipper's usual "The SAVE_CONFIG command will ..." text:
         # KlipperScreen asks to save on any message naming SAVE_CONFIG, and
         # the calibration menu saves by itself
@@ -768,6 +783,18 @@ class SnapmakerJ1Probe:
         "Move the Z origin up by OFFSET (stores the Z endstop position)")
     def cmd_SNAPMAKER_Z_ENDSTOP_ADJUST(self, gcmd):
         self._store_z_origin(gcmd, gcmd.get_float('OFFSET'))
+    cmd_SNAPMAKER_SET_PLATE_THICKNESS_help = (
+        "Set the build plate thickness in mm (moves the Z origin)")
+    def cmd_SNAPMAKER_SET_PLATE_THICKNESS(self, gcmd):
+        thickness = gcmd.get_float('THICKNESS', minval=0.,
+                                   maxval=MAX_PLATE_THICKNESS)
+        # A thicker plate moves the nozzle origin up by the difference
+        self._store_z_origin(gcmd, thickness - self.plate_thickness_setting,
+                             from_pending=True)
+        self.plate_thickness_setting = thickness
+        configfile = self.printer.lookup_object('configfile')
+        configfile.set('snapmaker_j1_probe', 'plate_thickness',
+                       "%.2f" % (thickness,))
     # Calibration session
     def _reset_calibration(self):
         self.cal_active = False
@@ -786,7 +813,9 @@ class SnapmakerJ1Probe:
         if 'COPY' in modes or 'MIRROR' in modes:
             raise gcmd.error("Calibration requires full control mode")
         self._reset_calibration()
-        self.plate_thickness = gcmd.get_float('THICKNESS', 5., minval=0.)
+        self.plate_thickness = gcmd.get_float(
+            'THICKNESS', self.plate_thickness_setting, minval=0.,
+            maxval=MAX_PLATE_THICKNESS)
         self.cal_active = True
     cmd_SNAPMAKER_CAL_MOVE_help = (
         "Move a nozzle above a calibration point (POINT= TOOL= Z= KEEP_Z=)")

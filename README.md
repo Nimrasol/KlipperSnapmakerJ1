@@ -104,8 +104,8 @@ This release is tested with ([versions.conf](versions.conf)):
 
 | Component | Version | Date |
 | --- | --- | --- |
-| Klipper | v0.13.0-809-gc63b2951 | 2026-10-18 |
-| Moonraker | v0.11.0-3-g9e676eb | 2026-09-28 |
+| Klipper | v0.13.0-816-gee2c6fb6 | 2026-10-21 |
+| Moonraker | v0.11.0-4-gb559b9a | 2026-10-21 |
 | KlipperScreen | v0.4.7-198-g911c75b | 2026-10-18 |
 
 The update manager offers updates only up to these versions; see

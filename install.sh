@@ -76,23 +76,35 @@ elif ! grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
     echo "  [include $J1_PRINTER_CFG]"
 fi
 # The calibrated values must be in printer.cfg itself: SAVE_CONFIG cannot
-# change values of an included file.  Defaults of an uncalibrated printer,
-# added after the include unless printer.cfg (or its SAVE_CONFIG block)
-# already has them
+# change values of an included file.  Defaults of an uncalibrated printer
+# (the stock firmware's), added after the include unless printer.cfg (or
+# its SAVE_CONFIG block) already has the section
 add_calibrated() {
-    local section=$1 value=$2
-    if ! grep -qE "^(#\*# )?\[$section\]" "$CONFIG_DIR/printer.cfg"; then
-        sed -i "\|^\[include $J1_PRINTER_CFG\]|a\\
+    local section=$1 comment=$2 lines="" opt
+    shift 2
+    grep -qE "^(#\*# )?\[$section\]" "$CONFIG_DIR/printer.cfg" && return
+    for opt in "$@"; do
+        lines="$lines\\
+$opt"
+    done
+    sed -i "\|^\[include $J1_PRINTER_CFG\]|a\\
 \\
-# Calibrated by the J1 calibration menu (SAVE_CONFIG)\\
-[$section]\\
-position_endstop: $value\\
-position_max: $value" "$CONFIG_DIR/printer.cfg"
-    fi
+# $comment\\
+[$section]$lines" "$CONFIG_DIR/printer.cfg"
 }
 if grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
-    add_calibrated stepper_z 205
-    add_calibrated dual_carriage 337
+    # Each one is inserted right after the include, so the last comes first
+    PID="PID_CALIBRATE (SAVE_CONFIG)"
+    add_calibrated heater_bed "$PID" "pid_Kp: 49.96" "pid_Ki: 4.59" \
+        "pid_Kd: 362.77"
+    for e in extruder1 extruder; do
+        add_calibrated $e "$PID" "pid_Kp: 18.3" "pid_Ki: 1.09" "pid_Kd: 76.75"
+    done
+    CAL="Calibrated by the J1 calibration menu (SAVE_CONFIG)"
+    add_calibrated dual_carriage "$CAL" "position_endstop: 337" \
+        "position_max: 337"
+    add_calibrated stepper_z "$CAL" "position_endstop: 205" \
+        "position_max: 205"
 fi
 
 # Moonraker update manager entry for this repository

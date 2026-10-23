@@ -429,8 +429,8 @@ Each release is made and tested with the versions listed in its
 
 | Component | Version | Commit | Date |
 | --- | --- | --- | --- |
-| [Klipper](https://github.com/Klipper3d/klipper) | v0.13.0-809-gc63b2951 | `c63b2951` | 2026-10-18 |
-| [Moonraker](https://github.com/Arksine/moonraker) | v0.11.0-3-g9e676eb | `9e676eba` | 2026-09-28 |
+| [Klipper](https://github.com/Klipper3d/klipper) | v0.13.0-816-gee2c6fb6 | `ee2c6fb6` | 2026-10-21 |
+| [Moonraker](https://github.com/Arksine/moonraker) | v0.11.0-4-gb559b9a | `b559b9a8` | 2026-10-21 |
 | [KlipperScreen](https://github.com/KlipperScreen/KlipperScreen) | v0.4.7-198-g911c75b | `911c75bf` | 2026-10-18 |
 | [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Debian 12 (bookworm) armhf, Python 3.11, lk2nd and Linux 6.12 (msm8916-mainline) | | |
 
@@ -698,9 +698,10 @@ S200/S6/S7` and `G1029` (reports the replacement commands).
 Verified on a J1 (board revision 2): clock (120 MHz) and UART to the
 display module, firmware update through the factory bootloader, homing of
 all axes, bed and both hotend heaters, PT100 readings, hotend and part
-fans, chamber light, Klipper host on the display module with touch screen
-and WLAN
+fans, chamber light, the TMC2209 UART multiplexer (each of the six drivers
+addressed separately), noise modes, the nozzle diameter dialog, Klipper
+host on the display module with touch screen and WLAN
 ([KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os)).
-Still to be validated on the printer: the TMC mux states, the filament
-sensor thresholds, the calibrations end to end and the mains failure
-hold-up time of the display module.
+Still to be validated on the printer: the filament sensor thresholds,
+the calibrations end to end and the mains failure hold-up time of the
+display module.

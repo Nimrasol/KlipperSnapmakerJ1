@@ -35,14 +35,13 @@ version; the active application is the one installed in
 * Clock: 25MHz crystal, 120MHz system clock (HSE/5 -> PLL2 x10 ->
   PREDIV1 /5 -> PLL x12), APB1 60MHz.
 * Host link: USART2 remapped to PD5 (TX) / PD6 (RX), connected to the
-  display module (`/dev/ttyHSL1` with the stock kernel, `/dev/ttyMSM1`
-  with a mainline kernel).  The stock firmware enables its display
+  display module (`/dev/ttyMSM1` with the mainline kernel of
+  KlipperSnapmakerJ1-os, `/dev/ttyHSL1` with the stock Android kernel).
+  The stock firmware enables its display
   protocol on this port (`event_serial[EVENT_SOURCE_HMI]`, the second
   serial port), and the factory bootloader fetches stock updates through
   it.  USART1 (PB6/PB7) carries the Marlin console and the bootloader's
-  text messages.  The stock firmware uses 115200 baud, Klipper 230400:
-  the UART driver of the stock kernel supports 115200, 230400, 460800,
-  921600 baud and higher rates, but not 250000.
+  text messages.  The stock firmware uses 115200 baud, Klipper 230400.
 
 ### Flash layout
 
@@ -112,7 +111,7 @@ header, never its own.
 | TMC2209 UART | TX PD8, RX PD9 | address 3, selected by mux PB15/PD10/PD11 |
 | Hotend heaters | PE14, PE13 | |
 | Hotend sensors | PA3, PA1 | PT100 with amplifier (stock table 25) |
-| Bed heater | !PA10 | solid state relay, feedback PA12 (high = powered) |
+| Bed heater | PA10 | solid state relay (high = on), feedback !PA12 (low = powered) |
 | Bed sensor | PC0 | EPCOS 100K, 4.7K pullup |
 | Board sensor | PA2 | EPCOS 100K, controls the electronics fan |
 | Part fans | PC9 (T0), PC7 (T1) | |
@@ -428,7 +427,7 @@ Each release is made and tested with the versions listed in its
 | [Klipper](https://github.com/Klipper3d/klipper) | v0.13.0-809-gc63b2951 | `c63b2951` | 2026-10-18 |
 | [Moonraker](https://github.com/Arksine/moonraker) | v0.11.0-3-g9e676eb | `9e676eba` | 2026-09-28 |
 | [KlipperScreen](https://github.com/KlipperScreen/KlipperScreen) | v0.4.7-198-g911c75b | `911c75bf` | 2026-10-18 |
-| [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Debian 12 (bookworm) armhf, Python 3.11, stock kernel 3.10.49 | | |
+| [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Debian 12 (bookworm) armhf, Python 3.11, lk2nd and Linux 6.12 (msm8916-mainline) | | |
 
 What depends on each version, and how it was tested:
 
@@ -443,24 +442,23 @@ What depends on each version, and how it was tested:
   panels the add-on adjusts, and the theme files.  Tested with all
   calibration workflows and 71 pages of KlipperScreen against a simulated
   J1 (layout checks included).
-* **Moonraker:** the update manager entry and the supervisord service
-  provider of the image.  Tested in the user space test of the image
+* **Moonraker:** the update manager entry (pinned commits) and the
+  systemd service provider of the image.  Tested in the user space test of the image
   (Moonraker connected to Klipper, all repositories valid and unmodified
   in the update manager).
 
 The update manager keeps Klipper, Moonraker and KlipperScreen as clones of
-their own repositories, so newer versions can be installed as on any
-printer; they are not tested with this release.  After a Klipper update,
-rebuild and install the main controller firmware when Klipper reports a
-protocol mismatch (`firmware/build.sh`, which also names the tested
-version).  To return to the tested versions:
-
-```
-git -C ~/klipper checkout -B master <commit from versions.conf>
-git -C ~/klipper branch -u origin/master master
-```
-
-and restart Klipper (likewise for Moonraker and KlipperScreen).
+their own repositories, but offers updates only up to the versions of
+`versions.conf`: `moonraker/KlipperSnapmakerJ1.conf` sets
+`pinned_commit` for their entries (written by
+`scripts/snapmaker_j1_versions.py`; `--check` verifies it before a
+release).  A release of KlipperSnapmakerJ1 with newer tested versions
+moves the pins; Moonraker restarts after that update and then offers
+Klipper, Moonraker and KlipperScreen up to the new versions.  A version
+newer than the pin (installed by hand) is kept and not offered back.
+After a Klipper update, rebuild and install the main controller firmware
+when Klipper reports a protocol mismatch (`firmware/build.sh`, which also
+names the tested version).
 
 ## Building and installing
 
@@ -476,7 +474,10 @@ KlipperScreen installed:
    This links the host modules into `~/klipper/klippy/extras`, the
    configuration into `~/printer_data/config/snapmaker_j1` (included
    from `printer.cfg`), the KlipperScreen add-on, theme and menu, and
-   adds the Moonraker update manager entry.  Check `hardware_version`
+   adds the Moonraker update manager entry.  The calibrated values
+   (`position_endstop` and `position_max` of `[stepper_z]` and
+   `[dual_carriage]`) are written to `printer.cfg` itself, because
+   `SAVE_CONFIG` cannot change values of an included file.  Check `hardware_version`
    and the mains failure pin in the printer configuration.
 2. Build and package the main controller firmware:
    ```
@@ -490,10 +491,10 @@ KlipperScreen installed:
    `firmware/out`.
 3. Install the firmware with Klipper stopped:
    ```
-   sudo supervisorctl stop klipper     # or: sudo systemctl stop klipper
+   sudo systemctl stop klipper
    ~/klippy-env/bin/python ~/KlipperSnapmakerJ1/scripts/snapmaker_j1_flash.py \
        ~/KlipperSnapmakerJ1/firmware/out/mc.bin
-   sudo supervisorctl start klipper    # or: sudo systemctl start klipper
+   sudo systemctl start klipper
    ```
    The script checks the image (header, checksums, start address after
    the bootloader, vector table), resets the main controller into its
@@ -503,8 +504,22 @@ KlipperScreen installed:
    and writes only the application pages and starts the new firmware
    after checking its checksum.  If the update is interrupted (power
    loss, closed connection) the main controller stays in its bootloader;
-   run the script again.  Before Klipper runs on the display module (the
-   first installation), `update.bin` on a USB stick with the stock
+   run the script again.
+
+   For the first installation, while the main controller still runs
+   the stock firmware, connect its USB port (USART1 through a CH340) to
+   any Linux computer, for example a Raspberry Pi, and run the same
+   script there:
+   ```
+   python3 snapmaker_j1_flash.py -d /dev/ttyUSB0 -v mc.bin
+   ```
+   It restarts the stock firmware with `M1999` and installs the image
+   through the factory bootloader, as Snapmaker's own USB update tool
+   does (tested on a J1 with stock firmware 2.2.14, about 30 seconds).
+   The USB port stays the recovery path: the bootloader listens there
+   for 6 seconds after every power up, so when the firmware does not
+   answer, start the script with `-w 60` and switch the printer off and
+   on.  Alternatively `update.bin` on a USB stick with the stock
    display's firmware update from USB does the same.
 
 Updates of this repository are offered by the Moonraker update manager
@@ -537,7 +552,14 @@ removed) with both nozzles at 220C and the bed at 60C; the print
 surface is the measured bed surface plus the build plate thickness.
 Results are collected in a calibration session and only stored when the
 calibration completes (`SNAPMAKER_CAL_FINISH SAVE=1`, then
-`SAVE_CONFIG`); quitting discards them.
+`SAVE_CONFIG`); quitting discards them.  The calibration menu runs
+`SAVE_CONFIG` itself, without KlipperScreen's confirmation dialog.  The
+bed leveling stores the Z origin (`position_endstop` of `[stepper_z]`):
+the bed homes to the Z endstop, and turning the leveling wheels changes
+the nozzle height at that position.  The assisted Z offset calibration
+sets the right nozzle with its thumbwheel only and stores nothing; the
+manual one also takes the Z origin from the left nozzle and the
+calibration card.
 
 ### Calibration menu (KlipperScreen)
 
@@ -662,11 +684,12 @@ S200/S6/S7` and `G1029` (reports the replacement commands).
 
 ## Open items
 
-* Validation on the printer: clock and UART on the real board, the TMC
-  mux states, sensor polarities, the filament sensor thresholds, the
-  PT100 table and the mains failure hold-up time of the display module.
-* A Linux tool for updating the firmware through the factory
-  bootloader (protocol summarized above).
-* Klipper host platform on the display module (Linux image for the
-  SC20-W), planned in
-  [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os).
+Verified on a J1 (board revision 2): clock (120 MHz) and UART to the
+display module, firmware update through the factory bootloader, homing of
+all axes, bed and both hotend heaters, PT100 readings, hotend and part
+fans, chamber light, Klipper host on the display module with touch screen
+and WLAN
+([KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os)).
+Still to be validated on the printer: the TMC mux states, the filament
+sensor thresholds, the calibrations end to end and the mains failure
+hold-up time of the display module.

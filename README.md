@@ -93,7 +93,10 @@ controller.
 Updates of this repository appear in the update panel of KlipperScreen,
 Mainsail and Fluidd (`[update_manager KlipperSnapmakerJ1]`).  Klipper,
 Moonraker and KlipperScreen stay unmodified clones of their own
-repositories and are updated through their own entries.
+repositories and are updated through their own entries, but only up to
+the versions this release is tested with: KlipperSnapmakerJ1 pins them
+in the update manager.  A release with newer tested versions moves the
+pins, so update KlipperSnapmakerJ1 first and then the others.
 
 ## Compatibility
 
@@ -105,10 +108,9 @@ This release is tested with ([versions.conf](versions.conf)):
 | Moonraker | v0.11.0-3-g9e676eb | 2026-09-28 |
 | KlipperScreen | v0.4.7-198-g911c75b | 2026-10-18 |
 
-Newer versions can be installed through the update manager but are not
-tested with this release; see
+The update manager offers updates only up to these versions; see
 [Compatibility](docs/Snapmaker_J1.md#compatibility) for what depends on
-each version and how to return to the tested ones.
+each version.
 
 ## Documentation
 

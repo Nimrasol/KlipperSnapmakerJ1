@@ -105,6 +105,20 @@ def init(screen):
     base_panel.update_action_bar = _update_action_bar
     _update_action_bar()
 
+    # The stock kernel (3.10) has no MemAvailable, so Moonraker reports the
+    # system memory without "used" and the titlebar usage display fails
+    # on every update
+    process_update = base_panel.process_update
+
+    def _process_update(action, data):
+        if action == "notify_proc_stat_update":
+            memory = data.get("system_memory") or {}
+            if "used" not in memory or not memory.get("total"):
+                return
+        return process_update(action, data)
+
+    base_panel.process_update = _process_update
+
     # Device names as on the stock display
     prettify = ScreenPanel.prettify
 

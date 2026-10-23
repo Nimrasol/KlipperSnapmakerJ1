@@ -153,11 +153,12 @@ E0 111, E1 011 (1 = high).
 | Homing order Z, X, Y and tool restore | `[homing_override]` | macros |
 | Tool change with Z hop and parking | `T0`/`T1` macros | macros |
 | TMC2209 behind a UART mux | `[tmc2209]` with `select_pins` | none |
-| Noise modes (normal/silent/loud) | `SET_VELOCITY_LIMIT`, `SET_TMC_FIELD en_spreadcycle` | macros |
+| Noise modes (normal/silent/loud) | `SET_VELOCITY_LIMIT` (200/8000, 75/3000, 300/8000), `SET_TMC_FIELD en_spreadcycle` | macros |
 | Input shaping (M593) | `[input_shaper]` per carriage | macros |
 | Linear advance (M900) | pressure advance | macros |
 | PT100 hotend sensors | `[adc_temperature]` from the stock table | none |
-| Thermal protection | `[verify_heater]`, min/max temp | none |
+| Thermal protection | `[verify_heater]`, min/max temp (5-320C nozzles, 5-110C bed) | none |
+| Highest heater target (MAXTEMP - OVERSHOOT: 300C nozzles, 100C bed) | `M104`/`M109`/`M140`/`M190`/`SET_HEATER_TEMPERATURE` limit the target | macros |
 | Heater supply switches cut on errors | `[output_pin]` with `shutdown_value: 0` | none |
 | Bed relay self check | continuous feedback monitoring of PA12 | `snapmaker_j1` |
 | Board revision detection | ADC check against the configured revision | `snapmaker_j1` |
@@ -186,6 +187,25 @@ cannot control Klipper), CNC/laser functions of the shared display code,
 the optional StallGuard check of Z homing (`M2000 S14`, off by default
 in the stock firmware) and the simultaneous T0/T1 parking move of
 `M2000 S200` (tool changes park the inactive carriage first).
+
+### Limits
+
+The limits come from the stock firmware (SnapmakerController-IDEX, its
+defaults are byte identical in the firmware of a J1's main controller)
+and, where the values stored on a J1 are lower (M503), from those:
+
+| Limit | Stock | Klipper |
+| --- | --- | --- |
+| Steps per mm X/Y/Z/E | 80 / 80 / 1600 / 138.58 | `rotation_distance` 40 / 40 / 2 / 23.091 |
+| Travel T0, T1, Y | X -13..324, X2 0..337 (home 337), Y 0..202 | same |
+| Z | homes up, soft minimum about 9.5mm below the plate surface (home offset) | `position_min: -8` (the calibrations probe the bare bed) |
+| Velocity X/Y/Z | 350 / 300 / 10 mm/s (stored) | `max_velocity: 300`, `max_z_velocity: 10` |
+| Acceleration X/Y/Z | 10000 / 8000 / 100 mm/s^2 (stored) | `max_accel: 8000`, `max_z_accel: 100` |
+| Extruder only | 40 mm/s (stored), 6000 mm/s^2, 200mm, 170C minimum | same |
+| Motor current | X 1000, Y 1400, Z 1000, E 800 mA RMS, 0.15 ohm | same; hold current not reduced (Klipper's recommendation) |
+| Heaters | target up to 300C / 100C, shutdown 320C / 110C, fault below 5C | same (macros limit the target) |
+| Homing | 50 / 50 / 10 mm/s, second touch a tenth, 2mm back off | same |
+
 
 ## Klipper changes
 
@@ -481,9 +501,11 @@ KlipperScreen installed:
    from `printer.cfg`), the KlipperScreen add-on, theme and menu, and
    adds the Moonraker update manager entry.  The calibrated values
    (`position_endstop` and `position_max` of `[stepper_z]` and
-   `[dual_carriage]`) are written to `printer.cfg` itself, because
-   `SAVE_CONFIG` cannot change values of an included file.  Check `hardware_version`
-   and the mains failure pin in the printer configuration.
+   `[dual_carriage]`, the PID values of both nozzles and the bed) are
+   written to `printer.cfg` itself with the stock defaults, because
+   `SAVE_CONFIG` cannot change values of an included file.  Check
+   `hardware_version` and the mains failure pin in the printer
+   configuration.
 2. Build and package the main controller firmware:
    ```
    ./KlipperSnapmakerJ1/firmware/build.sh

@@ -629,7 +629,10 @@ Shaper panels hidden (the J1 calibration menu covers them; the J1 has
 no accelerometer).  The add-on hides the shutdown button of the action
 bar (the J1 is switched off with its power switch; the emergency stop
 still shows while printing) and names the nozzles "Left Nozzle" and
-"Right Nozzle".  The printer config names the other devices for the
+"Right Nozzle".  "More → Network Name" sets the host name the printer
+announces as `<name>.local` (NetworkManager and avahi on the D-Bus,
+allowed for the group `netdev`), so several printers in one network
+get their own addresses.  The printer config names the other devices for the
 screen (`left_part_fan`, `right_part_fan`, `left_hotend_fan`,
 `right_hotend_fan`, `case_light`, shown as "Left Part Fan" and so on);
 the main board power switches and the electronics fan start with an

@@ -631,10 +631,11 @@ bar (the J1 is switched off with its power switch; the emergency stop
 still shows while printing) and names the nozzles "Left Nozzle" and
 "Right Nozzle".  The printer config names the other devices for the
 screen (`left_part_fan`, `right_part_fan`, `left_hotend_fan`,
-`right_hotend_fan`, `board_fan`, `case_light`, shown as "Left Part
-Fan" and so on); the main board power switches start with an
+`right_hotend_fan`, `case_light`, shown as "Left Part Fan" and so on);
+the main board power switches and the electronics fan start with an
 underscore (`_heater_power`, `_bed_power`, `_motor_power`,
-`_screen_power`), which hides them in KlipperScreen.
+`_screen_power`, `_board_fan`), which hides them in KlipperScreen,
+Mainsail and Fluidd.
 
 Installation (on the display module):
 ```

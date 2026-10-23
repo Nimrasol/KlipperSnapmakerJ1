@@ -14,6 +14,9 @@ COLORS = {
     '505050': '595a66', '666666': '737480',
     'b12f35': 'fc5244', 'f14f4f': 'fc5244', '6e0b30': 'f56a00',
 }
+# The J1 moves the bed on Z: Z- lifts it towards the nozzles, Z+ lowers
+# it, so the Z buttons (move, fine tuning) show the direction of the bed
+SAME_AS = {'z-closer.svg': 'arrow-up.svg', 'z-farther.svg': 'arrow-down.svg'}
 
 
 def recolor(text):
@@ -32,7 +35,7 @@ def main():
     src, dest = sys.argv[1:]
     os.makedirs(dest, exist_ok=True)
     for name in sorted(os.listdir(src)):
-        path = os.path.join(src, name)
+        path = os.path.join(src, SAME_AS.get(name, name))
         if name.endswith('.svg'):
             with open(path, encoding='utf-8') as f:
                 text = f.read()

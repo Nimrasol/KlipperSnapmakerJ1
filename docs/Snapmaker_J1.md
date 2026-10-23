@@ -173,7 +173,7 @@ E0 111, E1 011 (1 = high).
 | Heated bed leveling (knobs) | `[screws_tilt_adjust]` | none |
 | XY offset calibration of T1 | horizontal probing of the bed center feature | `snapmaker_j1_probe` |
 | T1 nozzle height adjustment | `SNAPMAKER_NOZZLE_HEIGHT` | `snapmaker_j1_probe` |
-| Build plate thickness | Z origin shift | macros |
+| Build plate thickness | Z origin shift, setting in the calibration menu | `snapmaker_j1_probe` |
 | Analog filament runout/jam detection | motion sensor based on the analog reading | `snapmaker_j1_filament_sensor` |
 | Pause / resume with parking, priming and wiping | `PAUSE`/`RESUME` macros, `SAVE_DUAL_CARRIAGE_STATE` | macros |
 | Power loss detection and recovery | state checkpoints, shutdown, `M23`/`M26`/`M24` resume | `snapmaker_j1_power_loss` |
@@ -285,6 +285,11 @@ xy_probe_z:
 #   measurement uses z_live_speed for its slow touches.
 #max_t1_offset: 5
 #max_center_offset: 5
+#plate_thickness: 5
+#   Thickness of the build plate in mm: Z 0 is this much above the bed
+#   surface the calibrations measure. Set by
+#   SNAPMAKER_SET_PLATE_THICKNESS (and the calibration menu) through
+#   SAVE_CONFIG.
 #stallguard_pin_stepper_x:
 #stallguard_pin_dual_carriage:
 #stallguard_pin_stepper_y:
@@ -564,8 +569,9 @@ calibration card.
 ### Calibration menu (KlipperScreen)
 
 The touch screen menu reproduces the stock "Calibration" page with its
-five entries; the first three can be switched between the assisted
-(sensor) and the manual workflow ("Assist Mode"):
+five entries, plus a "Build Plate" entry for the plate thickness; the
+first three can be switched between the assisted (sensor) and the
+manual workflow ("Assist Mode"):
 
 | Entry | Assisted workflow | Manual workflow |
 | --- | --- | --- |
@@ -574,6 +580,7 @@ five entries; the first three can be switched between the assisted
 | XY Offset Calibration | remove plate, heat, clean, automatic probing of the bed center feature, restore | test print of X/Y line patterns, then entering the observed shift |
 | Offset Calibration Check | plate check, load filament, check print, Z and XY evaluation pages | - |
 | Vibration Compensation | plate check, load filament, test print with 80/65/50/35Hz areas, choice per axis | - |
+| Build Plate | setting: plate thickness in 0.1mm steps (default 5.0mm, the PEI glass plate), saved with `SAVE_CONFIG` | - |
 
 The live bar follows the stock HorizontalPrecisionIndicator: the orange
 bar (0.08 wide) moves by the bar width per millimetre and is visible
@@ -668,8 +675,12 @@ the next ones are slow and only as long as the last change requires; a
 bed that was lowered beyond that or raised into the nozzle is found
 again with a fast touch.
 
-`SNAPMAKER_SET_PLATE_THICKNESS THICKNESS=` (4.7-5.5mm, default 5.0)
-shifts the Z origin when a build plate of another thickness is used.
+`SNAPMAKER_SET_PLATE_THICKNESS THICKNESS=` (0-10mm, default 5.0, the
+PEI glass plate) shifts the Z origin when a build plate of another
+thickness is used; the calibrations measure the bare bed and put Z 0
+this much above it.  The thickness (`plate_thickness` of
+`[snapmaker_j1_probe]`) and the shifted Z origin are stored together by
+`SAVE_CONFIG`, so they cannot get out of step.
 `SNAPMAKER_SET_VIBRATION_FREQ AXIS= FREQ=` stores an input shaper
 frequency.
 

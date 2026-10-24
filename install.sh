@@ -95,10 +95,11 @@ $opt"
 if grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
     # Each one is inserted right after the include, so the last comes first
     PID="PID_CALIBRATE (SAVE_CONFIG)"
-    add_calibrated heater_bed "$PID" "pid_Kp: 49.96" "pid_Ki: 4.59" \
-        "pid_Kd: 362.77"
+    add_calibrated heater_bed "$PID" "control: pid" "pid_Kp: 49.96" \
+        "pid_Ki: 4.59" "pid_Kd: 362.77"
     for e in extruder1 extruder; do
-        add_calibrated $e "$PID" "pid_Kp: 18.3" "pid_Ki: 1.09" "pid_Kd: 76.75"
+        add_calibrated $e "$PID" "control: pid" "pid_Kp: 18.3" \
+            "pid_Ki: 1.09" "pid_Kd: 76.75"
     done
     CAL="Calibrated by the J1 calibration menu (SAVE_CONFIG)"
     add_calibrated dual_carriage "$CAL" "position_endstop: 337" \

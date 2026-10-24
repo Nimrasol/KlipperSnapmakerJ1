@@ -501,9 +501,13 @@ KlipperScreen installed:
    from `printer.cfg`), the KlipperScreen add-on, theme and menu, and
    adds the Moonraker update manager entry.  The calibrated values
    (`position_endstop` and `position_max` of `[stepper_z]` and
-   `[dual_carriage]`, the PID values of both nozzles and the bed) are
-   written to `printer.cfg` itself with the stock defaults, because
-   `SAVE_CONFIG` cannot change values of an included file.  Check
+   `[dual_carriage]`, `control` and the PID values of both nozzles and
+   the bed) are written to `printer.cfg` itself with the stock defaults,
+   because `SAVE_CONFIG` cannot change values of an included file.  They
+   are values of the individual printer and stay out of this repository;
+   `PID_CALIBRATE HEATER=extruder TARGET=220` (likewise `extruder1`, and
+   `heater_bed` at 60) followed by `SAVE_CONFIG` measures and stores
+   them.  Check
    `hardware_version` and the mains failure pin in the printer
    configuration.
 2. Build and package the main controller firmware:

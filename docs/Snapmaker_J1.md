@@ -177,7 +177,7 @@ E0 111, E1 011 (1 = high).
 | Build plate thickness | Z origin shift, setting in the calibration menu | `snapmaker_j1_probe` |
 | Analog filament runout/jam detection | motion sensor based on the analog reading | `snapmaker_j1_filament_sensor` |
 | Pause / resume with parking, priming and wiping | `PAUSE`/`RESUME` macros, `SAVE_DUAL_CARRIAGE_STATE` | macros |
-| Paused print: part fans off, nozzles off and bed at a standby temperature after a delay, heat again | `SNAPMAKER_SET_PAUSE_STANDBY BED= DELAY=`, `SNAPMAKER_PAUSE_HEAT`, "Pause Standby" panel and "Heat" button | macros, KlipperScreen add-on |
+| Paused print: part fans off, nozzles off and bed at a standby temperature after a delay, heat again (RESUME, load filament) | `SNAPMAKER_SET_PAUSE_STANDBY BED= DELAY=`, `SNAPMAKER_PAUSE_HEAT`, "Pause Standby" panel | macros, KlipperScreen add-on |
 | Power loss detection and recovery | state checkpoints, shutdown, `M23`/`M26`/`M24` resume | `snapmaker_j1_power_loss` |
 | Factory bootloader boot state | restore "application normal" at startup | MCU |
 | Firmware update via the display | `scripts/snapmaker_j1_package.py`, `scripts/snapmaker_j1_flash.py` (stock update protocol to the factory bootloader) | script |

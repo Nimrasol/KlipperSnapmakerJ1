@@ -30,6 +30,9 @@ NAMES = {"extruder": "Left Nozzle", "extruder1": "Right Nozzle",
          "filament_sensor_t1": "Right Filament"}
 # KlipperScreen lists only Klipper's own filament sensor types
 FILAMENT_SENSOR = "snapmaker_j1_filament_sensor "
+# Display backlight (KlipperSnapmakerJ1-os lets the group video switch it)
+BACKLIGHT_DIR = "/sys/class/backlight"
+BL_POWER_ON, BL_POWER_OFF = "0", "4"
 
 
 def init(screen):
@@ -142,7 +145,45 @@ def init(screen):
 
         _get_filament_sensors.snapmaker_j1 = True
         Printer.get_filament_sensors = _get_filament_sensors
+
+    _patch_screensaver()
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
+
+
+def _set_backlight(value):
+    # Under Wayland KlipperScreen's screen saver only shows a black page;
+    # the backlight is switched like DPMS would on X11
+    try:
+        names = os.listdir(BACKLIGHT_DIR)
+    except OSError:
+        return
+    for name in names:
+        try:
+            with open(os.path.join(BACKLIGHT_DIR, name, "bl_power"), "w") as f:
+                f.write(value)
+        except OSError as e:
+            logging.info("Backlight %s not switched: %s", name, e)
+
+
+def _patch_screensaver():
+    from ks_includes.widgets.screensaver import ScreenSaver
+    if getattr(ScreenSaver.show, "snapmaker_j1", False):
+        return
+    show, close = ScreenSaver.show, ScreenSaver.close
+
+    def _show(self, *args):
+        result = show(self, *args)
+        if self.is_showing:
+            _set_backlight(BL_POWER_OFF)
+        return result
+
+    def _close(self, *args):
+        if self.is_showing:
+            _set_backlight(BL_POWER_ON)
+        return close(self, *args)
+
+    _show.snapmaker_j1 = True
+    ScreenSaver.show, ScreenSaver.close = _show, _close
 
 
 def _patch_progress_ring(screen, panel_class):

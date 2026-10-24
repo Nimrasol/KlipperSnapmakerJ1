@@ -15,13 +15,14 @@ from gi.repository import GLib, Gtk
 from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
-from . import calibration, filament, hostname, style
+from . import calibration, datetime_panel, filament, hostname, style
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
 PANEL = "snapmaker_calibration"
 FILAMENT_PANEL = "snapmaker_filament"
 HOSTNAME_PANEL = "snapmaker_hostname"
+DATETIME_PANEL = "snapmaker_datetime"
 THEME = "snapmaker-j1"
 # Klipper object names that KlipperScreen would show as "Extruder" and
 # "Extruder1"; the other devices are named in the printer config
@@ -46,6 +47,8 @@ def init(screen):
             return filament
         if panel == HOSTNAME_PANEL:
             return hostname
+        if panel == DATETIME_PANEL:
+            return datetime_panel
         module = load_panel(panel)
         if panel == "job_status":
             _patch_progress_ring(screen, module.Panel)
@@ -147,6 +150,7 @@ def init(screen):
         Printer.get_filament_sensors = _get_filament_sensors
 
     _patch_screensaver()
+    datetime_panel.apply_clock(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
 
 

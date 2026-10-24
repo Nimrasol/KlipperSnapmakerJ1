@@ -442,10 +442,9 @@ class Panel(ScreenPanel):
                            > .001)
 
     def _save_plate(self, widget):
-        # Klipper restarts to apply the moved Z origin
+        # Stored and applied at once (no restart)
         self._gcode("SNAPMAKER_SET_PLATE_THICKNESS THICKNESS=%.2f"
-                    % (self.plate_value,),
-                    lambda: self._screen._ws.api.gcode_script("SAVE_CONFIG"))
+                    % (self.plate_value,))
 
     def _assist_changed(self, switch, param, item):
         self.assist[item["key"]] = switch.get_active()

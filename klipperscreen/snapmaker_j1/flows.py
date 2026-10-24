@@ -283,7 +283,6 @@ def build():
                      " (5.0 mm for the PEI glass plate of the J1). The"
                      " calibrations measure the bare bed; the nozzles"
                      " start printing this much higher.\n\nSet it when"
-                     " you use another build plate. Klipper restarts to"
-                     " save it."),)},
+                     " you use another build plate."),)},
     ]
     return menu, flows

@@ -673,7 +673,14 @@ still shows while printing) and names the nozzles "Left Nozzle" and
 "Right Nozzle".  "More → Network Name" sets the host name the printer
 announces as `<name>.local` (NetworkManager and avahi on the D-Bus,
 allowed for the group `netdev`), so several printers in one network
-get their own addresses.  The printer config names the other devices for the
+get their own addresses.  "More → Clock" sets the time zone (region,
+then city; systemd-timedated, which KlipperSnapmakerJ1-os allows for the
+group `netdev`), shows whether the time is synchronized and switches the
+clock in the title bar on or off (stored in
+`~/.config/snapmaker_j1/klipperscreen.json`, as KlipperScreen drops
+unknown options from its own configuration).  The
+time itself comes from the network: the display module has no battery
+backed clock, so a time set by hand would be lost at the next power off.  The printer config names the other devices for the
 screen (`left_part_fan`, `right_part_fan`, `left_hotend_fan`,
 `right_hotend_fan`, `case_light`, shown as "Left Part Fan" and so on);
 the main board power switches and the electronics fan start with an

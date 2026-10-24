@@ -502,12 +502,17 @@ KlipperScreen installed:
    adds the Moonraker update manager entry.  The calibrated values
    (`position_endstop` and `position_max` of `[stepper_z]` and
    `[dual_carriage]`, `control` and the PID values of both nozzles and
-   the bed) are written to `printer.cfg` itself with the stock defaults,
-   because `SAVE_CONFIG` cannot change values of an included file.  They
-   are values of the individual printer and stay out of this repository;
-   `PID_CALIBRATE HEATER=extruder TARGET=220` (likewise `extruder1`, and
-   `heater_bed` at 60) followed by `SAVE_CONFIG` measures and stores
-   them.  Check
+   the bed) are written to `printer.cfg` itself with defaults, because
+   `SAVE_CONFIG` cannot change values of an included file.  The
+   calibration of each printer then stays in its `printer.cfg`.  The
+   PID defaults were measured on a J1 with the stock heaters: the bed
+   with `PID_CALIBRATE` at 60C (59.828 / 1.050 / 852.544), the nozzles
+   (28 / 0.65 / 180) tuned from heat-up curves at 220C, because the
+   `PID_CALIBRATE` result (about 12.4 / 0.53 / 72) overshot by 5C; they
+   overshoot about 1.5C and recover from the part fan switching to 100%
+   within about 85 s.  `PID_CALIBRATE HEATER=extruder TARGET=220`
+   (likewise `extruder1`, and `heater_bed` at 60) followed by
+   `SAVE_CONFIG` measures and stores values of the own printer.  Check
    `hardware_version` and the mains failure pin in the printer
    configuration.
 2. Build and package the main controller firmware:

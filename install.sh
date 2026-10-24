@@ -94,12 +94,15 @@ $opt"
 }
 if grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
     # Each one is inserted right after the include, so the last comes first
+    # PID values measured on a J1 with the stock heaters: the bed with
+    # PID_CALIBRATE at 60C; the nozzles tuned from heat-up curves at 220C
+    # (about 1.5C overshoot instead of 5C with the PID_CALIBRATE result)
     PID="PID_CALIBRATE (SAVE_CONFIG)"
-    add_calibrated heater_bed "$PID" "control: pid" "pid_Kp: 49.96" \
-        "pid_Ki: 4.59" "pid_Kd: 362.77"
+    add_calibrated heater_bed "$PID" "control: pid" "pid_Kp: 59.828" \
+        "pid_Ki: 1.050" "pid_Kd: 852.544"
     for e in extruder1 extruder; do
-        add_calibrated $e "$PID" "control: pid" "pid_Kp: 18.3" \
-            "pid_Ki: 1.09" "pid_Kd: 76.75"
+        add_calibrated $e "$PID" "control: pid" "pid_Kp: 28.0" \
+            "pid_Ki: 0.65" "pid_Kd: 180.0"
     done
     CAL="Calibrated by the J1 calibration menu (SAVE_CONFIG)"
     add_calibrated dual_carriage "$CAL" "position_endstop: 337" \

@@ -56,6 +56,8 @@ def init(screen):
         if panel == "job_status":
             _patch_progress_ring(screen, module.Panel)
             _patch_heat_button(module.Panel)
+        elif panel == "move":
+            _patch_move_options(module.Panel)
         elif panel == "fan":
             _patch_device_label(module.Panel, "add_fan")
         elif panel == "pins":
@@ -266,6 +268,23 @@ def _patch_heat_button(panel_class):
 
     _show_buttons_for_state.snapmaker_j1 = True
     panel_class.show_buttons_for_state = _show_buttons_for_state
+
+
+def _patch_move_options(panel_class):
+    # The axis inversion switches of the move panel only mirror buttons and
+    # graphs of KlipperScreen; the J1 menu already shows the directions of
+    # the printer (the bed moves in Z), so the switches would only confuse
+    add_option = panel_class.add_option
+    if getattr(add_option, "snapmaker_j1", False):
+        return
+
+    def _add_option(self, boxname, opt_array, opt_name, option):
+        if opt_name in ("invert_x", "invert_y", "invert_z"):
+            return {}
+        return add_option(self, boxname, opt_array, opt_name, option)
+
+    _add_option.snapmaker_j1 = True
+    panel_class.add_option = _add_option
 
 
 def _patch_device_label(panel_class, method):

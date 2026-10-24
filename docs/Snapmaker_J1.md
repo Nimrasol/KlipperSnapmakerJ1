@@ -308,9 +308,8 @@ xy_probe_z:
 #max_center_offset: 5
 #plate_thickness: 5
 #   Thickness of the build plate in mm: Z 0 is this much above the bed
-#   surface the calibrations measure. Set by
-#   SNAPMAKER_SET_PLATE_THICKNESS (and the calibration menu) through
-#   SAVE_CONFIG.
+#   surface the calibrations measure. SNAPMAKER_SET_PLATE_THICKNESS (and
+#   the calibration menu) store another one in save_variables.
 #stallguard_pin_stepper_x:
 #stallguard_pin_dual_carriage:
 #stallguard_pin_stepper_y:
@@ -500,12 +499,13 @@ KlipperScreen installed:
    This links the host modules into `~/klipper/klippy/extras`, the
    configuration into `~/printer_data/config/snapmaker_j1` (included
    from `printer.cfg`), the KlipperScreen add-on, theme and menu, and
-   adds the Moonraker update manager entry.  The calibrated values
-   (`position_endstop` and `position_max` of `[stepper_z]` and
-   `[dual_carriage]`, `control` and the PID values of both nozzles and
-   the bed) are written to `printer.cfg` itself with defaults, because
-   `SAVE_CONFIG` cannot change values of an included file.  The
-   calibration of each printer then stays in its `printer.cfg`.  The
+   adds the Moonraker update manager entry.  Defaults of the values
+   calibrated per printer (`position_endstop` and `position_max` of
+   `[stepper_z]` and `[dual_carriage]`, `control` and the PID values of
+   both nozzles and the bed) are written to `printer.cfg` itself,
+   because `SAVE_CONFIG` cannot change values of an included file.  The
+   J1 calibrations store their results in `snapmaker_j1_variables.cfg`
+   (see Calibration), PID tuning in `printer.cfg`.  The
    PID defaults were measured on a J1 with the stock heaters: the bed
    with `PID_CALIBRATE` at 60C (59.828 / 1.050 / 852.544), the nozzles
    (28 / 0.65 / 180) tuned from heat-up curves at 220C, because the
@@ -588,9 +588,15 @@ The stock calibrations measure on the bare heated bed (build plate
 removed) with both nozzles at 220C and the bed at 60C; the print
 surface is the measured bed surface plus the build plate thickness.
 Results are collected in a calibration session and only stored when the
-calibration completes (`SNAPMAKER_CAL_FINISH SAVE=1`, then
-`SAVE_CONFIG`); quitting discards them.  The calibration menu runs
-`SAVE_CONFIG` itself, without KlipperScreen's confirmation dialog.  The
+calibration completes (`SNAPMAKER_CAL_FINISH SAVE=1`); quitting
+discards them.  They are stored in `snapmaker_j1_variables.cfg`
+(`save_variables`) and take effect at once, without a restart and
+without homing again: the Z origin (`snap_j1_z_endstop`, the
+`position_endstop` and `position_max` of `[stepper_z]`), the X endstop
+of the right carriage (`snap_j1_t1_endstop`, the carriages home X once
+to take it), the Y offset of the right nozzle and the bed center.  The
+values in `printer.cfg` are the defaults until a calibration stored its
+own.  The
 bed leveling stores the Z origin (`position_endstop` of `[stepper_z]`):
 the bed homes to the Z endstop, and turning the leveling wheels changes
 the nozzle height at that position.  The assisted Z offset calibration
@@ -612,7 +618,7 @@ manual workflow ("Assist Mode"):
 | XY Offset Calibration | remove plate, heat, clean, automatic probing of the bed center feature, restore | test print of X/Y line patterns, then entering the observed shift |
 | Offset Calibration Check | plate check, load filament, check print, Z and XY evaluation pages | - |
 | Vibration Compensation | plate check, load filament, test print with 80/65/50/35Hz areas, choice per axis | - |
-| Build Plate | setting: plate thickness in 0.1mm steps (default 5.0mm, the PEI glass plate), saved with `SAVE_CONFIG` | - |
+| Build Plate | setting: plate thickness in 0.1mm steps (default 5.0mm, the PEI glass plate), stored at once | - |
 
 The live bar follows the stock HorizontalPrecisionIndicator: the orange
 bar (0.08 wide) moves by the bar width per millimetre and is visible
@@ -731,9 +737,9 @@ again with a fast touch.
 `SNAPMAKER_SET_PLATE_THICKNESS THICKNESS=` (0-10mm, default 5.0, the
 PEI glass plate) shifts the Z origin when a build plate of another
 thickness is used; the calibrations measure the bare bed and put Z 0
-this much above it.  The thickness (`plate_thickness` of
-`[snapmaker_j1_probe]`) and the shifted Z origin are stored together by
-`SAVE_CONFIG`, so they cannot get out of step.
+this much above it.  The thickness (`snap_j1_plate_thickness`, default
+`plate_thickness` of `[snapmaker_j1_probe]`) and the shifted Z origin
+are stored together, so they cannot get out of step.
 `SNAPMAKER_SET_VIBRATION_FREQ AXIS= FREQ=` stores an input shaper
 frequency.
 

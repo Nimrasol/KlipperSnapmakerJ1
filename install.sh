@@ -104,7 +104,7 @@ if grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
         add_calibrated $e "$PID" "control: pid" "pid_Kp: 28.0" \
             "pid_Ki: 0.65" "pid_Kd: 180.0"
     done
-    CAL="Calibrated by the J1 calibration menu (SAVE_CONFIG)"
+    CAL="Default; the J1 calibrations store theirs in snapmaker_j1_variables.cfg"
     add_calibrated dual_carriage "$CAL" "position_endstop: 337" \
         "position_max: 337"
     add_calibrated stepper_z "$CAL" "position_endstop: 205" \

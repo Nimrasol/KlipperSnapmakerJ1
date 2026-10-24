@@ -381,11 +381,14 @@ class SnapmakerJ1Probe:
         self.max_t1_offset = config.getfloat('max_t1_offset', 5., above=0.)
         self.max_center_offset = config.getfloat('max_center_offset', 5.,
                                                  above=0.)
-        # Build plate on the bed: Z 0 is its surface.  Stored in printer.cfg
-        # by SAVE_CONFIG together with the Z origin it shifts
+        # Build plate on the bed: Z 0 is its surface
         self.plate_thickness_setting = config.getfloat(
             'plate_thickness', 5., minval=0., maxval=MAX_PLATE_THICKNESS)
-        self.pending_endstop = None
+        # Calibration results (Z origin, X endstop of the right carriage,
+        # plate thickness) are kept in save_variables, which take effect
+        # without a restart; the configured values are the defaults
+        self.printer.register_event_handler('klippy:connect',
+                                            self._load_calibration)
         # Probe session handling
         self.active = None
         self.probe_session = probe.SampleAveragingHelper(
@@ -424,6 +427,10 @@ class SnapmakerJ1Probe:
             'bed_center_offset': self.pending_center}
         status['stallguard'] = self.stallguard.get_status()
         status['plate_thickness'] = self.plate_thickness_setting
+        # X endstops of the left and right carriage in use (the macros park
+        # there; the right one is calibrated, see _load_calibration)
+        status['carriage_endstops'] = [
+            r.rail.position_endstop for r in self._dc_rails()]
         return status
     def start_probe_session(self, gcmd):
         return self.probe_session.start_probe_session(gcmd)
@@ -755,30 +762,66 @@ class SnapmakerJ1Probe:
                        % (name, sg.thresholds[name], source, line.pin,
                           "active" if line.is_active() else "inactive"))
         gcmd.respond_info("\n".join(msg))
+    # Stored calibration
+    def _load_calibration(self):
+        svv = self.printer.lookup_object('save_variables', None)
+        variables = svv.allVariables if svv is not None else {}
+        try:
+            z = variables.get('snap_j1_z_endstop')
+            if z is not None:
+                self._set_rail_endstop(self._z_rail(), float(z))
+            t1 = variables.get('snap_j1_t1_endstop')
+            if t1 is not None:
+                self._set_rail_endstop(self._dc_rails()[1].rail, float(t1))
+        except (ValueError, self.printer.command_error):
+            logging.exception("Stored J1 calibration not applied")
+        plate = variables.get('snap_j1_plate_thickness')
+        if plate is not None:
+            self.plate_thickness_setting = float(plate)
+    def _set_rail_endstop(self, rail, endstop):
+        # The J1 homes Z and the right carriage to their maximum, so the
+        # endstop position doubles as the travel limit
+        if endstop <= rail.position_min:
+            raise self.printer.command_error(
+                "Endstop %.3f of %s is below position_min"
+                % (endstop, rail.get_name()))
+        rail.position_endstop = rail.position_max = endstop
+        if rail.get_name() == 'stepper_z':
+            # The Z maximum the toolhead reports (macros lift up to it)
+            kin = self.printer.lookup_object('toolhead').get_kinematics()
+            axes_max = list(kin.axes_max)
+            axes_max[2] = endstop
+            kin.axes_max = type(kin.axes_max)(axes_max)
+    def _save_variable(self, name, value):
+        self.printer.lookup_object('gcode').run_script_from_command(
+            "SAVE_VARIABLE VARIABLE=%s VALUE=%s" % (name, value))
     # Z origin
     def _z_rail(self):
         kin = self.printer.lookup_object('toolhead').get_kinematics()
         return [r for r in kin.rails if r.get_name() == 'stepper_z'][0]
-    def _store_z_origin(self, gcmd, offset, from_pending=False):
-        # The bed homes to the Z maximum, so its endstop position doubles
-        # as the travel limit and both must move together.  Measurements
-        # are relative to the endstop in use, a plate thickness change to
-        # the one that will be saved
-        endstop = self._z_rail().get_homing_info().position_endstop
-        if from_pending and self.pending_endstop is not None:
-            endstop = self.pending_endstop
-        endstop -= offset
-        self.pending_endstop = endstop
-        # Not Klipper's usual "The SAVE_CONFIG command will ..." text:
-        # KlipperScreen asks to save on any message naming SAVE_CONFIG, and
-        # the calibration menu saves by itself
-        gcmd.respond_info(
-            "stepper_z: position_endstop: %.3f\n"
-            "Stored in printer.cfg when the configuration is saved"
-            % (endstop,))
-        configfile = self.printer.lookup_object('configfile')
-        configfile.set('stepper_z', 'position_endstop', "%.3f" % (endstop,))
-        configfile.set('stepper_z', 'position_max', "%.3f" % (endstop,))
+    def _homed(self, axis):
+        toolhead = self.printer.lookup_object('toolhead')
+        eventtime = self.printer.get_reactor().monotonic()
+        return axis in toolhead.get_status(eventtime)['homed_axes']
+    def _store_z_origin(self, gcmd, offset):
+        # Measurements are relative to the endstop in use.  A homed bed
+        # keeps its physical position and its coordinate moves with the
+        # origin, so no new homing is needed
+        toolhead = self.printer.lookup_object('toolhead')
+        rail = self._z_rail()
+        old = rail.position_endstop
+        endstop = old - offset
+        toolhead.wait_moves()
+        homed = self._homed('z')
+        self._set_rail_endstop(rail, endstop)
+        if homed:
+            pos = toolhead.get_position()
+            pos[2] += endstop - old
+            toolhead.set_position(pos)
+            toolhead.get_kinematics().update_limits(2, rail.get_range())
+        self._save_variable('snap_j1_z_endstop', "%.3f" % (endstop,))
+        gcmd.respond_info("Z origin stored (stepper_z endstop at %.3f)"
+                          % (endstop,))
     cmd_SNAPMAKER_Z_ENDSTOP_ADJUST_help = (
         "Move the Z origin up by OFFSET (stores the Z endstop position)")
     def cmd_SNAPMAKER_Z_ENDSTOP_ADJUST(self, gcmd):
@@ -789,12 +832,9 @@ class SnapmakerJ1Probe:
         thickness = gcmd.get_float('THICKNESS', minval=0.,
                                    maxval=MAX_PLATE_THICKNESS)
         # A thicker plate moves the nozzle origin up by the difference
-        self._store_z_origin(gcmd, thickness - self.plate_thickness_setting,
-                             from_pending=True)
+        self._store_z_origin(gcmd, thickness - self.plate_thickness_setting)
         self.plate_thickness_setting = thickness
-        configfile = self.printer.lookup_object('configfile')
-        configfile.set('snapmaker_j1_probe', 'plate_thickness',
-                       "%.2f" % (thickness,))
+        self._save_variable('snap_j1_plate_thickness', "%.2f" % (thickness,))
     # Calibration session
     def _reset_calibration(self):
         self.cal_active = False
@@ -915,20 +955,20 @@ class SnapmakerJ1Probe:
         save = gcmd.get_int('SAVE', 0)
         if save and self.cal_active:
             gcode = self.printer.lookup_object('gcode')
-            configfile = self.printer.lookup_object('configfile')
             if self.pending_z is not None:
                 self._store_z_origin(gcmd, self.pending_z)
             if self.pending_t1 is not None:
                 endstop, offset_y = self.pending_t1
-                configfile.set('dual_carriage', 'position_endstop',
-                               "%.4f" % (endstop,))
-                configfile.set('dual_carriage', 'position_max',
-                               "%.4f" % (endstop,))
+                self._set_rail_endstop(self._dc_rails()[1].rail, endstop)
+                self._save_variable('snap_j1_t1_endstop', "%.4f" % (endstop,))
                 gcode.run_script_from_command(
                     "SAVE_VARIABLE VARIABLE=snap_j1_t1_offset_y VALUE=%.4f\n"
                     "SET_GCODE_VARIABLE MACRO=_SNAPMAKER_STATE"
                     " VARIABLE=t1_offset_y VALUE=%.4f"
                     % (offset_y, offset_y))
+                # The carriages take the new X frame by homing X only
+                if self._homed('x'):
+                    gcode.run_script_from_command("G28 X")
             if self.pending_center is not None:
                 gcode.run_script_from_command(
                     "SAVE_VARIABLE VARIABLE=snap_j1_bed_center_offset"

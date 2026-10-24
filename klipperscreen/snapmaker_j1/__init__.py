@@ -15,7 +15,7 @@ from gi.repository import GLib, Gtk
 from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
-from . import calibration, datetime_panel, filament, hostname, style
+from . import calibration, datetime_panel, filament, hostname, pause, style
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
@@ -23,6 +23,7 @@ PANEL = "snapmaker_calibration"
 FILAMENT_PANEL = "snapmaker_filament"
 HOSTNAME_PANEL = "snapmaker_hostname"
 DATETIME_PANEL = "snapmaker_datetime"
+PAUSE_PANEL = "snapmaker_pause"
 THEME = "snapmaker-j1"
 # Klipper object names that KlipperScreen would show as "Extruder" and
 # "Extruder1"; the other devices are named in the printer config
@@ -49,9 +50,12 @@ def init(screen):
             return hostname
         if panel == DATETIME_PANEL:
             return datetime_panel
+        if panel == PAUSE_PANEL:
+            return pause
         module = load_panel(panel)
         if panel == "job_status":
             _patch_progress_ring(screen, module.Panel)
+            _patch_heat_button(module.Panel)
         elif panel == "fan":
             _patch_device_label(module.Panel, "add_fan")
         elif panel == "pins":
@@ -149,6 +153,18 @@ def init(screen):
         _get_filament_sensors.snapmaker_j1 = True
         Printer.get_filament_sensors = _get_filament_sensors
 
+    # Dialog choices centered below the message (GTK puts them at the
+    # right end)
+    make_dialog = screen.gtk.Dialog
+    if not getattr(make_dialog, "snapmaker_j1", False):
+        def _dialog(*args, **kwargs):
+            dialog = make_dialog(*args, **kwargs)
+            dialog.get_action_area().set_halign(Gtk.Align.CENTER)
+            return dialog
+
+        _dialog.snapmaker_j1 = True
+        screen.gtk.Dialog = _dialog
+
     _patch_screensaver()
     datetime_panel.apply_clock(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
@@ -223,6 +239,33 @@ def _patch_progress_ring(screen, panel_class):
 
     _on_draw.snapmaker_j1 = True
     panel_class.on_draw = _on_draw
+
+
+def _patch_heat_button(panel_class):
+    # A paused print cools down after a while (PAUSE); the print page gets
+    # a button that heats it to its print temperatures again, for example
+    # before loading filament
+    show_buttons = panel_class.show_buttons_for_state
+    if getattr(show_buttons, "snapmaker_j1", False):
+        return
+
+    def _show_buttons_for_state(self):
+        show_buttons(self)
+        if self.state != "paused":
+            return
+        if "snapmaker_heat" not in self.buttons:
+            button = self._gtk.Button("heat-up", _("Heat"), "color3")
+            button.connect(
+                "clicked", lambda widget: self._screen._ws.klippy.gcode_script(
+                    "SNAPMAKER_PAUSE_HEAT"))
+            self.buttons["snapmaker_heat"] = button
+        grid = self.buttons["button_grid"]
+        grid.insert_column(1)
+        grid.attach(self.buttons["snapmaker_heat"], 1, 0, 1, 1)
+        grid.show_all()
+
+    _show_buttons_for_state.snapmaker_j1 = True
+    panel_class.show_buttons_for_state = _show_buttons_for_state
 
 
 def _patch_device_label(panel_class, method):

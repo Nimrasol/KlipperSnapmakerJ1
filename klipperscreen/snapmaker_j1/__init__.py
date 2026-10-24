@@ -30,6 +30,8 @@ THEME = "snapmaker-j1"
 NAMES = {"extruder": "Left Nozzle", "extruder1": "Right Nozzle",
          "filament_sensor_t0": "Left Filament",
          "filament_sensor_t1": "Right Filament"}
+# Electronics fan (temperature_fan, hidden elsewhere by its underscore)
+BOARD_FAN = "temperature_fan _board_fan"
 # KlipperScreen lists only Klipper's own filament sensor types
 FILAMENT_SENSOR = "snapmaker_j1_filament_sensor "
 # Display backlight (KlipperSnapmakerJ1-os lets the group video switch it)
@@ -60,6 +62,7 @@ def init(screen):
             _patch_move_options(module.Panel)
         elif panel == "fan":
             _patch_device_label(module.Panel, "add_fan")
+            _patch_board_fan(module.Panel)
         elif panel == "pins":
             _patch_device_label(module.Panel, "add_pin")
         return module
@@ -285,6 +288,70 @@ def _patch_move_options(panel_class):
 
     _add_option.snapmaker_j1 = True
     panel_class.add_option = _add_option
+
+
+def _patch_board_fan(panel_class):
+    # The fan panel lists no temperature fans; show the board fan there
+    # read only, as the hotend fans (it follows the board temperature)
+    load_fans = panel_class.load_fans
+    if getattr(load_fans, "snapmaker_j1", False):
+        return
+    # KlipperScreen calls activate/deactivate only when a panel has them
+    activate = getattr(panel_class, "activate", None)
+    deactivate = getattr(panel_class, "deactivate", None)
+
+    def _load_fans(self):
+        load_fans(self)
+        if BOARD_FAN not in self._printer.get_config_section_list(BOARD_FAN):
+            return
+        name = Gtk.Label(halign=Gtk.Align.START, valign=Gtk.Align.CENTER,
+                         hexpand=True, vexpand=True)
+        name.set_markup("\n<big><b>%s</b></big>\n" % _("Board Fan"))
+        self.snapmaker_board_fan = Gtk.ProgressBar(hexpand=True,
+                                                   show_text=True)
+        bar = Gtk.Box(spacing=5)
+        bar.pack_start(self.snapmaker_board_fan, True, True, 10)
+        row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        row.add(name)
+        row.add(bar)
+        self.labels["devices"].attach(row, 0, len(self.devices) + 1, 1, 1)
+        self.labels["devices"].show_all()
+
+    def _update_board_fan(self):
+        def got(result, method, params, *args):
+            try:
+                fan = result["result"]["status"][BOARD_FAN]
+            except (KeyError, TypeError):
+                return
+            self.snapmaker_board_fan.set_fraction(fan["speed"])
+            self.snapmaker_board_fan.set_text(
+                "%d%%  (%s %.0f °C)" % (round(fan["speed"] * 100),
+                                        _("Board"), fan["temperature"]))
+
+        self._screen._ws.api.query_objects(
+            {BOARD_FAN: ["speed", "temperature"]}, got)
+        return True
+
+    def _activate(self):
+        if activate is not None:
+            activate(self)
+        if getattr(self, "snapmaker_board_fan", None) is not None:
+            _update_board_fan(self)
+            self.snapmaker_board_timer = GLib.timeout_add_seconds(
+                2, _update_board_fan, self)
+
+    def _deactivate(self):
+        timer = getattr(self, "snapmaker_board_timer", None)
+        if timer is not None:
+            GLib.source_remove(timer)
+            self.snapmaker_board_timer = None
+        if deactivate is not None:
+            deactivate(self)
+
+    _load_fans.snapmaker_j1 = True
+    panel_class.load_fans = _load_fans
+    panel_class.activate = _activate
+    panel_class.deactivate = _deactivate
 
 
 def _patch_device_label(panel_class, method):

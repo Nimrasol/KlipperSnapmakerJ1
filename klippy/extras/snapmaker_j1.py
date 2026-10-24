@@ -11,6 +11,7 @@ ADC_SAMPLE_TIME = 0.001
 ADC_SAMPLE_COUNT = 8
 ADC_VREF = 3.3
 BED_CHECK_TIME = 0.500
+PRINT_CHECK_TIME = 1.
 # The header of J1 slicer files starts with a thumbnail of several KiB;
 # Prusa/Orca style slicers write their settings to the end of the file
 FILE_HEADER_LIMIT = 512 * 1024
@@ -92,6 +93,7 @@ class SnapmakerJ1:
                                      self._bed_feedback_handler)
         self.nozzle_check = {'filename': None, 'mismatch': False,
                              'file': [None, None], 'machine': [None, None]}
+        self.print_state = None
         self.printer.register_event_handler('klippy:ready', self._handle_ready)
         self.printer.register_event_handler('klippy:shutdown',
                                             self._handle_shutdown)
@@ -110,6 +112,21 @@ class SnapmakerJ1:
         if self.bed_feedback_enabled:
             self.reactor.register_timer(self._check_bed_feedback,
                                         self.reactor.NOW)
+        self.reactor.register_timer(self._check_print_end, self.reactor.NOW)
+    # End of a completed print: Klipper runs no G-code at that point, the
+    # stock firmware cleans up (heaters off, full control mode, parking)
+    def _check_print_end(self, eventtime):
+        state = self.printer.lookup_object('print_stats').get_status(
+            eventtime)['state']
+        if self.print_state == 'printing' and state == 'complete':
+            self.reactor.register_callback(self._print_done)
+        self.print_state = state
+        return eventtime + PRINT_CHECK_TIME
+    def _print_done(self, eventtime):
+        try:
+            self.gcode.run_script("_SNAPMAKER_PRINT_DONE")
+        except self.printer.command_error as e:
+            logging.warning("End of print: %s", e)
     # Board revision
     def _calc_hw_version(self):
         mv = self.hw_adc.get_mv()

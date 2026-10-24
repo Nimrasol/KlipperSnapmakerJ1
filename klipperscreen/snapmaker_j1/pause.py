@@ -33,8 +33,8 @@ class Panel(ScreenPanel):
             label=_("A paused print turns its part fans off at once. After "
                     "the delay the nozzles cool down and the bed stays at "
                     "the standby temperature, so the print keeps sticking to "
-                    "the plate. Resume, Load Filament and Heat on the print "
-                    "page heat everything again."),
+                    "the plate. Resume and Load Filament heat to the print "
+                    "temperatures again."),
             wrap=True, xalign=0, wrap_mode=Pango.WrapMode.WORD_CHAR)
         box.pack_start(intro, False, False, 0)
         self.bed_label = self._row(box, _("Bed standby temperature"),

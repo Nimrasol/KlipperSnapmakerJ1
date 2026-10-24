@@ -30,6 +30,10 @@ THEME = "snapmaker-j1"
 NAMES = {"extruder": "Left Nozzle", "extruder1": "Right Nozzle",
          "filament_sensor_t0": "Left Filament",
          "filament_sensor_t1": "Right Filament"}
+# Print mode of the J1 (macro state) and its names on the print page
+STATE_MACRO = "gcode_macro _SNAPMAKER_STATE"
+PRINT_MODES = {"FULL_CONTROL": "IDEX", "DUPLICATION": "Duplication",
+               "MIRROR": "Mirror", "BACKUP": "Backup"}
 # Electronics fan (temperature_fan, hidden elsewhere by its underscore)
 BOARD_FAN = "temperature_fan _board_fan"
 # KlipperScreen lists only Klipper's own filament sensor types
@@ -57,7 +61,7 @@ def init(screen):
         module = load_panel(panel)
         if panel == "job_status":
             _patch_progress_ring(screen, module.Panel)
-            _patch_heat_button(module.Panel)
+            _patch_job_status(module.Panel)
         elif panel == "move":
             _patch_move_options(module.Panel)
         elif panel == "fan":
@@ -246,31 +250,79 @@ def _patch_progress_ring(screen, panel_class):
     panel_class.on_draw = _on_draw
 
 
-def _patch_heat_button(panel_class):
-    # A paused print cools down after a while (PAUSE); the print page gets
-    # a button that heats it to its print temperatures again, for example
-    # before loading filament
-    show_buttons = panel_class.show_buttons_for_state
-    if getattr(show_buttons, "snapmaker_j1", False):
+def _patch_job_status(panel_class):
+    # Print page: the part fans of both toolheads in full (KlipperScreen
+    # cuts the fan line to 12 characters, "R:100%" became "R:10") and the
+    # print mode next to the elapsed time
+    create_status_grid = panel_class.create_status_grid
+    if getattr(create_status_grid, "snapmaker_j1", False):
         return
+    process_update = panel_class.process_update
+    activate = getattr(panel_class, "activate", None)
+    deactivate = getattr(panel_class, "deactivate", None)
 
-    def _show_buttons_for_state(self):
-        show_buttons(self)
-        if self.state != "paused":
-            return
-        if "snapmaker_heat" not in self.buttons:
-            button = self._gtk.Button("heat-up", _("Heat"), "color3")
-            button.connect(
-                "clicked", lambda widget: self._screen._ws.klippy.gcode_script(
-                    "SNAPMAKER_PAUSE_HEAT"))
-            self.buttons["snapmaker_heat"] = button
-        grid = self.buttons["button_grid"]
-        grid.insert_column(1)
-        grid.attach(self.buttons["snapmaker_heat"], 1, 0, 1, 1)
-        grid.show_all()
+    def _create_status_grid(self, widget=None):
+        create_status_grid(self, widget)
+        info = self.status_grid
+        elapsed = self.buttons["elapsed"]
+        info.remove(elapsed)
+        mode = self._gtk.Button("toolchanger", "-", None, self.bts,
+                                Gtk.PositionType.LEFT, 1)
+        mode.set_halign(Gtk.Align.START)
+        self.buttons["snapmaker_mode"] = mode
+        row = Gtk.Grid(column_homogeneous=True)
+        row.attach(elapsed, 0, 0, 3, 1)
+        row.attach(mode, 2, 0, 2, 1)
+        info.attach(row, 0, 3, 1, 1)
 
-    _show_buttons_for_state.snapmaker_j1 = True
-    panel_class.show_buttons_for_state = _show_buttons_for_state
+    def _process_update(self, action, data):
+        result = process_update(self, action, data)
+        if action == "notify_status_update" and self.fans:
+            self.buttons["fan"].set_label("  ".join(
+                "%s %d%%" % (fan["name"].rstrip(":"),
+                             round(self._printer.get_fan_speed(name) * 100))
+                for name, fan in self.fans.items()))
+        return result
+
+    def _update_mode(self):
+        def got(result, method, params, *args):
+            try:
+                state = result["result"]["status"][STATE_MACRO]
+            except (KeyError, TypeError):
+                return
+            mode = state.get("print_mode", "")
+            label = PRINT_MODES.get(mode, mode.replace("_", " ").title())
+            if mode == "BACKUP" and state.get("backup_swapped"):
+                label = _("Backup, right")
+            button = self.buttons.get("snapmaker_mode")
+            if button is not None:
+                button.set_label(label)
+
+        self._screen._ws.api.query_objects(
+            {STATE_MACRO: ["print_mode", "backup_swapped"]}, got)
+        return True
+
+    def _activate(self):
+        if activate is not None:
+            activate(self)
+        _update_mode(self)
+        if getattr(self, "snapmaker_mode_timer", None) is None:
+            self.snapmaker_mode_timer = GLib.timeout_add_seconds(
+                3, _update_mode, self)
+
+    def _deactivate(self):
+        timer = getattr(self, "snapmaker_mode_timer", None)
+        if timer is not None:
+            GLib.source_remove(timer)
+            self.snapmaker_mode_timer = None
+        if deactivate is not None:
+            deactivate(self)
+
+    _create_status_grid.snapmaker_j1 = True
+    panel_class.create_status_grid = _create_status_grid
+    panel_class.process_update = _process_update
+    panel_class.activate = _activate
+    panel_class.deactivate = _deactivate
 
 
 def _patch_move_options(panel_class):

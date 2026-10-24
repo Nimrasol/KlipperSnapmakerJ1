@@ -125,6 +125,9 @@ def init(screen):
         base_panel.control["shutdown"].set_visible(False)
 
     base_panel.update_action_bar = _update_action_bar
+    # The emergency stop at the top of the action bar, away from the pause
+    # button at the bottom of the print page
+    base_panel.action_bar.reorder_child(base_panel.control["estop"], 0)
     _update_action_bar()
 
     # The stock kernel (3.10) has no MemAvailable, so Moonraker reports the

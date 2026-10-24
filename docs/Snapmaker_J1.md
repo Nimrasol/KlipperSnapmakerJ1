@@ -657,7 +657,12 @@ The menu of the J1 comes from `snapmaker_j1/snapmaker_j1.conf`, which
 the install script includes from KlipperScreen.conf: the calibration
 entry, and the generic Bed Level, Bed Mesh, Z Calibrate and Input
 Shaper panels hidden (the J1 calibration menu covers them; the J1 has
-no accelerometer).  The add-on hides the shutdown button of the action
+no accelerometer).  The same include sets screen blanking to 15 minutes
+both while idle and while printing, matching the stock J1 screen saver
+delay.  KlipperScreen blacks out or powers off the screen; the stock
+firmware instead dimmed it to 10% and showed print status.
+
+The add-on hides the shutdown button of the action
 bar (the J1 is switched off with its power switch; the emergency stop
 still shows while printing) and names the nozzles "Left Nozzle" and
 "Right Nozzle".  "More → Network Name" sets the host name the printer

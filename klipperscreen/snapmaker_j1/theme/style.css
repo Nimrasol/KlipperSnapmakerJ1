@@ -318,59 +318,60 @@ textview .time {
     border-bottom: 1px solid @lines;
 }
 
-/* Dialogs: stock popup card, choices as colored text in the bottom row */
+/* Dialogs: a page like the menus (page background, white text), the
+ * choices as rounded tiles; the confirming choice in the orange of the
+ * primary buttons, cancelling ones with red text */
 .dialog {
+    background-color: @bg;
+    background-image: none;
+    border: none;
+    border-radius: 0;
+}
+
+.dialog label {
+    color: @text;
+}
+
+.dialog button {
     background-color: @card-bottom;
     background-image: linear-gradient(to bottom, @card-top, @card-bottom);
     border: none;
     border-radius: .75em;
+    margin: 0 .5em .5em .5em;
 }
 
-.dialog label {
-    color: @text-body;
-}
-
-.dialog button {
+.dialog button:active {
     background-image: none;
-    background-color: transparent;
-    border: none;
-    border-top: .05em solid @lines;
-    border-radius: 0;
+    background-color: @active;
 }
 
 .dialog button label {
+    color: @text;
     font-weight: 500;
 }
 
-.dialog-primary label,
-.dialog-default label,
-.dialog-info label {
-    color: @primary;
+.dialog button.dialog-primary,
+.dialog button.dialog-info {
+    background-color: @primary;
+    background-image: linear-gradient(to right, @primary-start, @primary-end);
 }
 
-.dialog-secondary label {
-    color: @text-body;
+.dialog button.dialog-primary:active,
+.dialog button.dialog-info:active {
+    background-image: linear-gradient(to right, @pressed-start, @pressed-end);
 }
 
-.dialog-warning label {
+.dialog button.dialog-warning label {
     color: @warning;
 }
 
-.dialog-error label {
+.dialog button.dialog-error label {
     color: @error;
 }
 
-.dialog-primary,
-.dialog-default,
-.dialog-info,
-.dialog-secondary,
-.dialog-warning,
-.dialog-error {
-    border-bottom: none;
-}
-
 .dialog .image-button {
-    border-top: none;
+    background-image: none;
+    background-color: transparent;
 }
 
 /* Toasts: dark card with a colored edge */

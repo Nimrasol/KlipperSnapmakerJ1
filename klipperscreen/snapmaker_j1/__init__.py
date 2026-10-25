@@ -15,8 +15,8 @@ from gi.repository import GLib, Gtk
 from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
-from . import (calibration, datetime_panel, filament, hostname, light,
-               pause, style)
+from . import (calibration, chooser, datetime_panel, filament, hostname,
+               light, pause, style)
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
@@ -170,6 +170,19 @@ def init(screen):
 
         _get_filament_sensors.snapmaker_j1 = True
         Printer.get_filament_sensors = _get_filament_sensors
+
+    # Drop-downs of the settings open a touch friendly choice
+    add_option = ScreenPanel.add_option
+    if not getattr(add_option, "snapmaker_j1", False):
+        def _add_option(self, boxname, opt_array, opt_name, option):
+            setting = add_option(self, boxname, opt_array, opt_name, option)
+            widget = (setting or {}).get(opt_name)
+            if isinstance(widget, Gtk.ComboBoxText):
+                chooser.attach(screen, widget, option["name"])
+            return setting
+
+        _add_option.snapmaker_j1 = True
+        ScreenPanel.add_option = _add_option
 
     # Dialog choices centered below the message (GTK puts them at the
     # right end)

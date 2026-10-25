@@ -30,6 +30,9 @@ HEIGHT_VALID_RANGE = 0.08
 LIVE_RETRACT = 2.
 # Thickest build plate SNAPMAKER_SET_PLATE_THICKNESS accepts (mm)
 MAX_PLATE_THICKNESS = 10.
+# Extra Z travel below position_min during a calibration session, so the
+# touches find the bed also with a Z origin that is several mm wrong
+CAL_Z_EXTRA = 10.
 # Trigger reason of a driver DIAG line (the reasons of klippy/mcu.py
 # end at REASON_COMMS_TIMEOUT)
 REASON_STALLGUARD = 8
@@ -581,6 +584,8 @@ class SnapmakerJ1Probe:
         status = toolhead.get_status(curtime)
         low = status['axis_minimum'][axis]
         high = status['axis_maximum'][axis]
+        if axis == 2 and self.cal_active:
+            low -= CAL_Z_EXTRA
         target[axis] = min(max(target[axis], low), high)
         return target
     def _touch(self, axis, direction, distance, speed, guarded=False):
@@ -856,7 +861,19 @@ class SnapmakerJ1Probe:
         self.plate_thickness_setting = thickness
         self._save_variable('snap_j1_plate_thickness', "%.2f" % (thickness,))
     # Calibration session
+    def _session_z_limits(self, extended):
+        # The Z range of a session reaches CAL_Z_EXTRA below position_min
+        if not self._homed('z'):
+            return
+        rail = self._z_rail()
+        low, high = rail.get_range()
+        if extended:
+            low -= CAL_Z_EXTRA
+        kin = self.printer.lookup_object('toolhead').get_kinematics()
+        kin.update_limits(2, (low, high))
     def _reset_calibration(self):
+        if getattr(self, 'cal_active', False):
+            self._session_z_limits(False)
         self.cal_active = False
         self.datum = self.height_difference = None
         self.pending_z = self.pending_t1 = self.pending_center = None
@@ -877,6 +894,7 @@ class SnapmakerJ1Probe:
             'THICKNESS', self.plate_thickness_setting, minval=0.,
             maxval=MAX_PLATE_THICKNESS)
         self.cal_active = True
+        self._session_z_limits(True)
     cmd_SNAPMAKER_CAL_MOVE_help = (
         "Move a nozzle above a calibration point (POINT= TOOL= Z= KEEP_Z=)")
     def cmd_SNAPMAKER_CAL_MOVE(self, gcmd):
@@ -967,7 +985,10 @@ class SnapmakerJ1Probe:
             self.pending_t1 = [
                 self._dc_rails()[1].rail.get_homing_info().position_endstop,
                 svv.allVariables.get('snap_j1_t1_offset_y', 0.)]
-        self.pending_t1[0] -= gcmd.get_float('X_ADJUST', 0.)
+        # A right nozzle printing too far right (X_ADJUST > 0) gets a
+        # larger endstop position, which moves it left by the same amount;
+        # its Y offset is a gcode offset, which is reduced
+        self.pending_t1[0] += gcmd.get_float('X_ADJUST', 0.)
         self.pending_t1[1] -= gcmd.get_float('Y_ADJUST', 0.)
     cmd_SNAPMAKER_CAL_FINISH_help = (
         "End the calibration session, storing its results if SAVE=1")

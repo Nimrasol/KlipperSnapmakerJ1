@@ -16,7 +16,7 @@ from gi.repository import GLib, Gtk, Pango
 
 from ks_includes.screen_panel import ScreenPanel
 
-from . import settings
+from . import chooser, settings
 
 CASE_LIGHT = "case_light"
 PIN = "output_pin " + CASE_LIGHT
@@ -155,7 +155,6 @@ class Panel(ScreenPanel):
         self.display = {}
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         if self.light.available():
-            box.add(self._heading(_("Case Light")))
             box.add(self._light_row())
             names = level_names()
             box.add(self._dropdown(
@@ -208,7 +207,7 @@ class Panel(ScreenPanel):
         return row
 
     def _light_row(self):
-        row = self._row(_("Brightness"), vertical=True)
+        row = self._row(_("Case Light Brightness"), vertical=True)
         self.scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0,
                                               len(LEVELS) - 1, 1)
         self.scale.set_digits(0)
@@ -230,7 +229,8 @@ class Panel(ScreenPanel):
         # Busy while Klipper has not taken the new value yet
         self.spinner = Gtk.Spinner()
         self.spinner.set_size_request(self._gtk.font_size * 2, -1)
-        line = Gtk.Box(spacing=5)
+        # The step names below the bar keep off the separator line
+        line = Gtk.Box(spacing=5, margin_bottom=self._gtk.font_size)
         line.pack_start(self.scale, True, True, 0)
         line.pack_start(self.spinner, False, False, 0)
         row.add(line)
@@ -244,6 +244,7 @@ class Panel(ScreenPanel):
             if value == active:
                 dropdown.set_active(i)
         dropdown.connect("changed", callback)
+        chooser.attach(self._screen, dropdown, name)
         row.add(dropdown)
         return row
 

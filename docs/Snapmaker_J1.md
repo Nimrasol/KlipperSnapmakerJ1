@@ -397,7 +397,8 @@ continues on the other toolhead once.  `SET_FILAMENT_SENSOR` and the
 stock `M412 S<0|1> T<0|1>` switch a sensor; the state is kept in the
 save_variables file (`snap_j1_<name>_enabled`) like the stock EEPROM
 setting.  `RESUME` and `SNAPMAKER_POWER_LOSS_RESUME` prime the
-toolheads and refuse to continue when an enabled sensor of a printing
+toolheads (at the purge positions beside the wipers, see below, then
+wiping on them) and refuse to continue when an enabled sensor of a printing
 toolhead saw no filament motion (stock: power loss resume).  The
 KlipperScreen add-on shows both sensors with their switch in the
 extrude panel.
@@ -412,6 +413,14 @@ that extruder moves.  `LOAD_FILAMENT` and `UNLOAD_FILAMENT [TOOL=<0|1>]
 [TEMP=<°C>] [LENGTH=<mm>] [SPEED=<mm/min>]` use the active toolhead and
 the print temperature by default (220°C below 170°C); they are also
 used by the load/unload buttons of the KlipperScreen extrude panel.
+Before loading, unloading and the extrude/retract buttons of that panel
+the nozzle moves 11mm (right nozzle 7mm) off its endstop, just beside its parking wiper, so
+the filament falls down between the wiper and the bed as on the stock
+firmware (a parked nozzle presses the filament into the silicone;
+`variable_offset` of `_SNAPMAKER_FILAMENT_MOVE`), homing first if needed,
+with the bed at
+least at Z50 (in a paused print 12mm above the print; `RESUME` restores
+the carriages and the height).
 
 #### [snapmaker_j1_power_loss]
 
@@ -729,7 +738,15 @@ pictures and test prints belong to Snapmaker and are not part of this
 repository; `scripts/snapmaker_j1_extract_assets.py` takes them from
 the display application of the user's own printer
 (`/data/app/com.snapmaker.j1-*/base.apk` on the userdata partition).
-Pictures given with `--images` take precedence.
+Pictures given with `--images` take precedence.  The stock firmware
+clamps moves to its travel limits, and the calibration check parks the
+carriages just beyond them (X-14, X340) and wipes at Y-0.5; Klipper
+rejects such moves, so the script clamps travel moves (without
+extrusion) of the test prints to the J1 limits.  The `G28` lines of
+their start G-code become `SNAPMAKER_HOME_IF_NEEDED`, which homes only
+when not all axes are homed, as the stock firmware does at the start of
+a print (the end G-code still homes to park the carriages; the
+calibration menu has homed the printer already).
 
 ### Commands
 

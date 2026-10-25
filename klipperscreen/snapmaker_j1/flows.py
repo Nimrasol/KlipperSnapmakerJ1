@@ -32,6 +32,10 @@ PID_HEATERS = [('extruder', 235), ('extruder1', 235), ('heater_bed', 60)]
 VIBRATION_FREQS = [80, 65, 50, 35]
 
 GCODE_DIR = 'snapmaker_j1'
+# Test print of the manual XY calibration: the dual extruder vernier
+# model (left extruder frame, right extruder combs, 0.1 mm per line),
+# sliced for the J1 by the user (see docs)
+XY_TEST_FILE = 'snapmaker_xy_offset_test.gcode'
 
 def _step(kind, title, text, image=None, **kw):
     s = {'kind': kind, 'title': title, 'text': text, 'image': image}
@@ -189,19 +193,34 @@ def build():
             restore_glass, success],
         'xy_manual': [
             _step(CHECK, _("Prepare XY Offset Calibration"),
-                  _("A test model is printed with both extruders. You then"
-                    " pick the best matching line group of the X and Y test"
-                    " patterns to correct the offset of the right"
-                    " extruder.\n\nInstall the glass plate and load"
-                    " filament into both extruders."),
-                  'ic_j1_calibration'),
+                  _("A test model with an X and a Y scale is printed: the"
+                    " left extruder prints the frame, the right one the"
+                    " combs. Afterwards you read on both scales how far the"
+                    " right extruder is off and enter the two values; they"
+                    " are applied at once.\n\nInstall the glass plate."),
+                  'gif_j1_calibration_print_calibration_model',
+                  thumbnail=XY_TEST_FILE),
+            load('pic_calibration_j1_z_offset_load_filament'),
             _step(PRINT, _("Print Calibration Model"), "",
                   'gif_j1_calibration_print_calibration_model',
-                  file='snapmaker_xy_offset_test.gcode'),
-            _step(OFFSET, _("Correct XY Offset"),
-                  _("Enter how far the lines of the right extruder are"
-                    " shifted against the lines of the left extruder"
-                    " (positive: to the right/back)."), 'ic_j1_calibration'),
+                  file=XY_TEST_FILE, thumbnail=XY_TEST_FILE),
+            _step(INFO, _("Read the Scales"),
+                  _("Every line is 0.1 mm, counted from line 0 at the X or"
+                    " Y label. On each scale find where the lines meet"
+                    " exactly (red frame): in the + row the value is"
+                    " positive, in the - row negative. If a value is not 0,"
+                    " repeat the calibration until both scales show 0/0."),
+                  examples=[
+                      ('xy_scale_example_1',
+                       _("Example 1: X 0.0, Y 0.0")),
+                      ('xy_scale_example_2',
+                       _("Example 2: X -0.3, Y -0.2")),
+                  ]),
+            _step(OFFSET, _("Enter the Values"),
+                  _("Enter the values read on the X and Y scales; Next"
+                    " applies them to the right extruder.\n\nIf a value"
+                    " was not 0, run this calibration again after it has"
+                    " finished, until both scales show 0 / 0.")),
             success],
         'check': [
             install_glass, load('pic_calibration_j1_z_offset_load_filament'),
@@ -287,9 +306,9 @@ def build():
          'texts': (_("Both extruders touch the calibration feature of the"
                      " heated bed in sequence to measure and calibrate"
                      " their X and Y offsets automatically."),
-                   _("Print the X and Y calibration model and pick the best"
-                     " line groups to calibrate the X and Y offsets of the"
-                     " two extruders."))},
+                   _("Print a test model with an X and a Y scale, read on"
+                     " them how far the right extruder is off (0.1 mm per"
+                     " line) and enter the two values."))},
         {'key': 'check', 'title': _("Offset Calibration Check"),
          'assist': False, 'flows': ('check',),
          'images': ('pic_model_check_360x408',),

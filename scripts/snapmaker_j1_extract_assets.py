@@ -47,11 +47,12 @@ IMAGES = [
     # Filament runout and change dialog
     'pic_warning_filament_runout_120x120',
 ]
-# Test prints: calibration check, vibration compensation, XY test lines
+# Test prints: calibration check, vibration compensation.  The XY test
+# lines of the application (a400_xy) are made for the larger A400 bed;
+# the manual XY calibration uses a test print sliced by the user.
 GCODES = {
     'scp_p4': 'snapmaker_calibration_check.gcode',
     'gcode_vibration_compensation_print': 'snapmaker_vibration_test.gcode',
-    'a400_xy': 'snapmaker_xy_offset_test.gcode',
 }
 DENSITY_ORDER = ['xxxhdpi', 'xxhdpi', 'xhdpi', 'hdpi', 'mdpi', '']
 

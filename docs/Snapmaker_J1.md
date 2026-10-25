@@ -633,11 +633,41 @@ manual workflow ("Assist Mode"):
 | --- | --- | --- |
 | Heated Bed Leveling | remove plate, heat, clean nozzles, rear reference, live height bar while turning the front left and front right wheels, restore | checklist, calibration card at the rear point, then the front wheels at the same height |
 | Z Offset Calibration | remove plate, loosen the right extruder screws, heat, clean, live height bar while turning the right extruder thumbwheel, tighten and restore | checklist, calibration card with the left nozzle (sets the Z origin), then the right nozzle thumbwheel at the same height |
-| XY Offset Calibration | remove plate, heat, clean, automatic probing of the bed center feature, restore | test print of X/Y line patterns, then entering the observed shift |
+| XY Offset Calibration | remove plate, heat, clean, automatic probing of the bed center feature, restore | test print of an X and a Y vernier scale, page explaining how to read them, entering the two values (0.1mm steps, -1.0 to +1.0) |
 | Offset Calibration Check | plate check, load filament, check print, Z and XY evaluation pages | - |
 | Vibration Compensation | plate check, load filament, test print with 80/65/50/35Hz areas, choice per axis | - |
 | PID Auto Tune | choice of left nozzle, right nozzle or heated bed; the stored values (default or tuned) and "Restore Default"; info page, autotune with temperature and progress (Quit aborts it), result | - |
 | Build Plate | setting: plate thickness in 0.1mm steps (default 5.0mm, the PEI glass plate), stored at once | - |
+
+The manual XY calibration prints
+`~/printer_data/gcodes/snapmaker_j1/snapmaker_xy_offset_test.gcode`,
+which the user provides: the stock application's XY test lines are
+made for the larger A400 bed (they reach Y251).  It is the dual
+extruder vernier model "Offset_X_Y_dual_extruder" (remix with + and -
+rows, 0.1mm per line), sliced for the J1 in OrcaSlicer with the left
+extruder for part 1 (frame) and the right extruder for part 2 (combs).
+On each scale the + row has comb teeth 0.1mm closer than the frame and
+the - row 0.1mm wider, so the line where both meet tells how far the
+right nozzle prints off: line k of the + row +0.1k mm (to the right or
+back), of the - row -0.1k mm.  The value corrects the X endstop of the
+right carriage (larger for a nozzle printing too far right) and its Y
+offset.  The calibration is repeated until both scales show 0 / 0.
+
+The pages of the manual XY calibration: prepare (glass plate), load
+filament, test print, read the scales, enter the values, success.  The
+prepare and print pages show the slicer thumbnail of the test print
+(extracted by Moonraker into `.thumbs`; without one the stock
+animation is shown).  The reading page shows two pictures of the model
+beside the text, with the meeting lines framed in red
+(`klipperscreen/snapmaker_j1/images/xy_scale_example_1.png`: X 0.0 /
+Y 0.0, `xy_scale_example_2.png`: X -0.3 / Y -0.2).
+
+The start G-code of the test print has no nozzle flush: it heats the
+bed and both nozzles, homes if needed (SNAPMAKER_HOME_IF_NEEDED) and
+lets the right extruder print three skirt loops outside the skirt of
+the left one (1.5, 2.0 and 2.5mm from it), so the right nozzle is
+primed on the first layer; the right nozzle then waits at 140°C until
+its first tool change.
 
 The live bar follows the stock HorizontalPrecisionIndicator: the orange
 bar (0.08 wide) moves by the bar width per millimetre and is visible
@@ -733,7 +763,8 @@ Installation (on the display module):
 This links `klipperscreen/snapmaker_j1` as a KlipperScreen
 add-on, enables add-ons, adds the "Calibration" main menu entry and
 copies the pictures to `~/printer_data/config/snapmaker_j1/images` and
-the three test prints to `~/printer_data/gcodes/snapmaker_j1/`.  The
+the calibration check and vibration test prints to
+`~/printer_data/gcodes/snapmaker_j1/`.  The
 pictures and test prints belong to Snapmaker and are not part of this
 repository; `scripts/snapmaker_j1_extract_assets.py` takes them from
 the display application of the user's own printer
@@ -758,7 +789,8 @@ individual steps are `SNAPMAKER_CAL_BEGIN`, `SNAPMAKER_CAL_HEAT
 [TOOL=] [Z=] [KEEP_Z=1]`, `SNAPMAKER_CAL_JOG DISTANCE=`,
 `SNAPMAKER_CAL_DATUM POINT= [ORIGIN=0]`, `SNAPMAKER_CAL_HEIGHT POINT=
 TOOL=`, `SNAPMAKER_CAL_SET_ORIGIN`, `SNAPMAKER_CAL_XY`,
-`SNAPMAKER_CAL_NOZZLE_OFFSET X_ADJUST= Y_ADJUST=` and
+`SNAPMAKER_CAL_NOZZLE_OFFSET X_ADJUST= Y_ADJUST=` (how far the right
+nozzle prints off, positive to the right/back) and
 `SNAPMAKER_CAL_END SAVE=0|1`.  Points 0-5 are the stock calibration
 points (bed center, rear center, front left, front right, rear left,
 rear right), corrected by the bed center offset measured by the XY
@@ -767,6 +799,10 @@ calibration.
 `SNAPMAKER_CAL_DATUM` also sets the Z origin (bed reference plus plate
 thickness) unless `ORIGIN=0` is given; like the stock firmware, the bed
 leveling stores it and the nozzle height calibration does not.
+During a calibration session the Z range reaches 10mm below
+position_min, so the touches find the bed even when a stored Z origin
+is several millimetres wrong (eg after a manual Z calibration with a
+mismeasured card); the normal range returns when the session ends.
 Repeated `SNAPMAKER_CAL_HEIGHT` calls at the same point work like the
 stock live measurement: the first touch is fast and StallGuard guarded,
 the next ones are slow and only as long as the last change requires; a

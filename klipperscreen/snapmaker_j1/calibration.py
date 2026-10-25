@@ -20,6 +20,7 @@ from . import style as S
 IMAGE_DIRS = ["~/printer_data/config/snapmaker_j1/images",
               os.path.join(os.path.dirname(__file__), "images")]
 IMAGE_EXTS = ("gif", "png", "webp")
+GCODES = "~/printer_data/gcodes"
 # Height indicator of the stock display (HorizontalPrecisionIndicator):
 # the bar moves by the indicator width per millimetre, so it is visible
 # within about +/-0.54mm; further out a chevron points to the bar
@@ -27,7 +28,11 @@ INDICATOR_LIMIT = 2.5
 INDICATOR_VALID = 0.08
 INDICATOR_VISUAL = 1.
 JOG_STEPS = [-1., -.1, -.05, .05, .1, 1.]
-OFFSET_STEP = .05
+# Lines of the scales of the manual XY test print (mm) and their range
+OFFSET_STEP = .1
+OFFSET_MAX = 1.
+# Size of the pictures of the scales of the manual XY test print (dp)
+EXAMPLE_SIZE = 180
 # Build plate thickness setting (mm), as SNAPMAKER_SET_PLATE_THICKNESS
 PLATE_DEFAULT = 5.
 PLATE_MAX = 10.
@@ -49,6 +54,25 @@ def _find_image(name):
             if os.path.exists(path):
                 return path
     return None
+
+
+def _thumbnail(filename):
+    # Largest slicer thumbnail of a test print, extracted by Moonraker
+    base = os.path.splitext(filename)[0]
+    thumbs = os.path.expanduser(os.path.join(GCODES, F.GCODE_DIR, ".thumbs"))
+    try:
+        names = [n for n in os.listdir(thumbs)
+                 if n.startswith(base + "-") and n.endswith(".png")]
+    except OSError:
+        return None
+    def size(name):
+        try:
+            return int(name[len(base) + 1:-4].split("x")[0])
+        except ValueError:
+            return 0
+    if not names:
+        return None
+    return os.path.join(thumbs, max(names, key=size))
 
 
 def _icon(name, size):
@@ -234,8 +258,8 @@ class Panel(ScreenPanel):
     def _dp(self, value):
         return int(round(S.dp(self._screen, value)))
 
-    def _image(self, name, width, height):
-        path = _find_image(name)
+    def _image(self, name, width, height, path=None):
+        path = path or _find_image(name)
         try:
             if path is not None and path.endswith(".gif"):
                 anim = GdkPixbuf.PixbufAnimation.new_from_file(path)
@@ -658,8 +682,13 @@ class Panel(ScreenPanel):
         body.set_margin_top(self._dp(16))
         body.set_margin_start(self._dp(16))
         body.set_margin_end(self._dp(16))
-        if step.get("image"):
-            image = self._image(step["image"], self._dp(188), self._dp(204))
+        # Picture of a test model: the thumbnail of the sliced file
+        thumbnail = None
+        if step.get("thumbnail"):
+            thumbnail = _thumbnail(step["thumbnail"])
+        if step.get("image") or thumbnail:
+            image = self._image(step["image"], self._dp(188), self._dp(204),
+                                thumbnail)
             image.set_valign(Gtk.Align.START)
             body.pack_start(image, False, False, 0)
         right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
@@ -679,6 +708,25 @@ class Panel(ScreenPanel):
             warning = self._label("", "snap-warning")
             self.step_widgets["warning"] = warning
             right.pack_start(warning, False, False, 0)
+        if step.get("examples"):
+            # Reading examples of the manual XY test print scales, beside
+            # the text: below it they push the buttons off the screen
+            examples = Gtk.Box(spacing=self._dp(16), homogeneous=True,
+                               valign=Gtk.Align.START)
+            for name, caption in step["examples"]:
+                example = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
+                                  spacing=self._dp(4))
+                example.pack_start(self._image(
+                    name, self._dp(EXAMPLE_SIZE), self._dp(EXAMPLE_SIZE)),
+                    False, False, 0)
+                # One line: a wrapping label asks for the height of its
+                # narrowest width and pushes the page below the screen
+                label = Gtk.Label(label=caption,
+                                  ellipsize=Pango.EllipsizeMode.END)
+                example.pack_start(self._styled(label, "snap-progress"),
+                                   False, False, 0)
+                examples.pack_start(example, True, True, 0)
+            body.pack_start(examples, False, False, 0)
         getattr(self, "_build_" + step["kind"])(step, right)
         body.pack_start(right, True, True, 0)
         return body
@@ -939,17 +987,18 @@ class Panel(ScreenPanel):
             self._set_ready(True)
 
     def _build_offset(self, step, box):
+        # The values read on the X and Y scales of the test print
         self.offset = [0., 0.]
         grid = Gtk.Grid(column_spacing=self._dp(12), row_spacing=self._dp(8))
         for row, axis in enumerate("XY"):
             grid.attach(self._styled(Gtk.Label(label=axis), "snap-value"),
                         0, row, 1, 1)
-            minus = self._button("-%.2f" % OFFSET_STEP, "secondary",
+            minus = self._button("-%.1f" % OFFSET_STEP, "secondary",
                                  small=True)
-            plus = self._button("+%.2f" % OFFSET_STEP, "secondary",
+            plus = self._button("+%.1f" % OFFSET_STEP, "secondary",
                                 small=True)
-            value = self._styled(Gtk.Label(label="0.00", width_chars=6),
-                                 "snap-value")
+            value = self._styled(Gtk.Label(label=self._offset_text(0.),
+                                           width_chars=8), "snap-value")
             minus.connect("clicked", self._change_offset, row, -OFFSET_STEP,
                           value)
             plus.connect("clicked", self._change_offset, row, OFFSET_STEP,
@@ -959,9 +1008,14 @@ class Panel(ScreenPanel):
             grid.attach(plus, 3, row, 1, 1)
         box.pack_start(grid, False, False, 0)
 
+    @staticmethod
+    def _offset_text(value):
+        return "%+.1f mm" % (value,) if value else "0.0 mm"
+
     def _change_offset(self, widget, axis, delta, label):
-        self.offset[axis] = round(self.offset[axis] + delta, 3)
-        label.set_label("%.2f" % (self.offset[axis],))
+        self.offset[axis] = round(min(max(self.offset[axis] + delta,
+                                          -OFFSET_MAX), OFFSET_MAX), 3)
+        label.set_label(self._offset_text(self.offset[axis]))
 
     # Live measurement
     def _live_measure(self):

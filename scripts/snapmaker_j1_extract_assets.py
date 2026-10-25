@@ -62,6 +62,46 @@ def density_rank(path):
             return i
     return len(DENSITY_ORDER)
 
+# Travel limits per tool (X, Y).  The stock firmware clamps moves to its
+# soft endstops and the calibration check parks the carriages just
+# beyond them (X-14, X340) and wipes at Y-0.5; Klipper rejects such
+# moves, so travel moves are clamped here.  X of the right carriage stays
+# below the lowest plausible calibrated endstop.
+TRAVEL_LIMITS = {0: ((-13., 324.), (0., 202.)), 1: ((0., 337.), (0., 202.))}
+
+def adapt_gcode(data):
+    # Travel moves clamped as above; G28 of the start G-code homes only
+    # when needed, as the stock firmware does at the start of a print (the
+    # calibration menu has homed the printer already).  The G28 of the end
+    # G-code stays: it parks the carriages and lowers the bed.
+    out = []
+    tool = 0
+    relative = False
+    started = False
+    for line in data.splitlines(True):
+        code = line.split(b';')[0].strip()
+        if line.startswith(b';LAYER:'):
+            started = True
+        if code.startswith(b'G28') and not started:
+            ending = line[len(line.rstrip(b'\r\n')):]
+            line = b'SNAPMAKER_HOME_IF_NEEDED' + ending
+        elif code in (b'T0', b'T1'):
+            tool = int(code[1:])
+        elif code.startswith(b'G91'):
+            relative = True
+        elif code.startswith(b'G90'):
+            relative = False
+        elif (re.match(br'G0?[01]\s', code) and not relative
+              and b'E' not in code):
+            for i, axis in enumerate((b'X', b'Y')):
+                low, high = TRAVEL_LIMITS[tool][i]
+                def clamp(m):
+                    value = min(max(float(m.group(1)), low), high)
+                    return axis + (b'%g' % (value,))
+                line = re.sub(axis + br'(-?\d+\.?\d*)', clamp, line, count=1)
+        out.append(line)
+    return b''.join(out)
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extract Snapmaker J1 calibration assets from base.apk")
@@ -94,8 +134,9 @@ def main():
     if args.gcodes:
         os.makedirs(args.gcodes, exist_ok=True)
         for raw, filename in GCODES.items():
+            data = adapt_gcode(apk.read('res/raw/%s.gcode' % (raw,)))
             with open(os.path.join(args.gcodes, filename), 'wb') as f:
-                f.write(apk.read('res/raw/%s.gcode' % (raw,)))
+                f.write(data)
 
 if __name__ == '__main__':
     main()

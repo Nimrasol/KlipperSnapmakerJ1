@@ -13,6 +13,7 @@ from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango
 
 from ks_includes.screen_panel import ScreenPanel
 
+from . import chooser
 from . import flows as F
 from . import style as S
 
@@ -31,6 +32,8 @@ OFFSET_STEP = .05
 PLATE_DEFAULT = 5.
 PLATE_MAX = 10.
 PLATE_STEP = .1
+# Seconds between status queries while a PID autotune runs
+PID_POLL = 2
 
 
 def _rgb(color):
@@ -220,6 +223,9 @@ class Panel(ScreenPanel):
         self.offset = [0., 0.]
         self.step_ready = False
         self.plate_thickness = self.plate_value = PLATE_DEFAULT
+        self.pid_heater = F.PID_HEATERS[0][0]
+        self.pid_timer = None
+        self.pid_aborting = False
         self.menu_box = self._build_menu()
         self.content.add(self.menu_box)
         self._select(None, 0)
@@ -352,6 +358,8 @@ class Panel(ScreenPanel):
             button.add(row)
             button.set_size_request(self._dp(128), self._dp(56))
             self._styled(button, "snap-section")
+            if item.get("separator"):
+                self._styled(button, "snap-separated")
             button.connect("clicked", self._select, i)
             sections.pack_start(button, False, False, 0)
             self.section_buttons.append(button)
@@ -395,6 +403,11 @@ class Panel(ScreenPanel):
         row.pack_start(text, True, True, 0)
         self.detail.pack_start(row, True, True, 0)
         bottom = self._bottom_bar()
+        if item.get("setting") == "pid":
+            self._pid_controls(text, bottom)
+            self.detail.pack_start(bottom, False, False, 0)
+            self.detail.show_all()
+            return
         if item.get("setting") == "plate_thickness":
             self._plate_controls(text, bottom)
             self.detail.pack_start(bottom, False, False, 0)
@@ -446,6 +459,108 @@ class Panel(ScreenPanel):
         self._gcode("SNAPMAKER_SET_PLATE_THICKNESS THICKNESS=%.2f"
                     % (self.plate_value,))
 
+    # PID autotune: heater choice, stored values, back to the defaults
+    def _pid_controls(self, text, bottom):
+        heaters = Gtk.ComboBoxText(valign=Gtk.Align.CENTER)
+        for heater, temp in F.PID_HEATERS:
+            heaters.append(heater, F.pid_heater_name(heater))
+        heaters.set_active_id(self.pid_heater)
+        heaters.connect("changed", self._pid_heater_changed)
+        chooser.attach(self._screen, heaters, _("PID Auto Tune"))
+        bottom.pack_start(self._bar_button(heaters, "start"), False, False, 0)
+        reset = self._button(_("Restore Default"), "secondary")
+        reset.connect("clicked", self._pid_reset)
+        reset.set_sensitive(False)
+        bottom.pack_start(reset, False, False, 0)
+        start = self._bar_button(self._button(_("Start"), "primary"), "end")
+        start.connect("clicked", self._start)
+        bottom.pack_end(start, False, False, 0)
+        self.pid_widgets = (text, reset, text.get_label())
+        self._pid_query(self._pid_show_values)
+
+    def _pid_heater_changed(self, combo):
+        self.pid_heater = combo.get_active_id()
+        self._pid_query(self._pid_show_values)
+
+    def _pid_query(self, callback):
+        def got(result, method, params, *args):
+            try:
+                status = result["result"]["status"]
+                pid = status["snapmaker_j1"]["pid"]
+            except (KeyError, TypeError):
+                return
+            callback(pid, status)
+
+        self._screen._ws.api.query_objects(
+            {"snapmaker_j1": ["pid"],
+             self.pid_heater: ["temperature", "target"]}, got)
+
+    @staticmethod
+    def _pid_values(gains):
+        return "Kp %.3f   Ki %.3f   Kd %.3f" % tuple(gains)
+
+    def _pid_show_values(self, pid, status):
+        if self.flow is not None or self.menu_items[self.selected].get(
+                "setting") != "pid":
+            return
+        text, reset, intro = self.pid_widgets
+        lines = [_("PID values (Kp / Ki / Kd):")]
+        for heater, temp in F.PID_HEATERS:
+            gains = pid["gains"].get(heater)
+            if gains is None:
+                continue
+            origin = (_("tuned") if heater in pid["stored"]
+                      else _("default"))
+            lines.append("%s  %.2f / %.3f / %.1f  (%s)"
+                         % ((F.pid_heater_name(heater),) + tuple(gains)
+                            + (origin,)))
+        text.set_label(intro + "\n\n" + "\n".join(lines))
+        reset.set_sensitive(self.pid_heater in pid["stored"])
+
+    def _pid_reset(self, widget):
+        widget.set_sensitive(False)
+        self._gcode("SNAPMAKER_PID_RESET HEATER=%s" % (self.pid_heater,),
+                    lambda: self._pid_query(self._pid_show_values))
+
+    def _pid_poll(self):
+        step = self.flow[self.index] if self.flow else None
+        # Until the autotune has finished and its result is shown
+        if step is None or step["kind"] != F.PID or self.step_ready:
+            self.pid_timer = None
+            return False
+
+        def show(pid, status):
+            if "pid_temp" not in self.step_widgets or self.step_ready:
+                return
+            heater = status.get(step["heater"], {})
+            self.step_widgets["pid_temp"].set_label(
+                "%.1f / %.0f°C" % (heater.get("temperature", 0.),
+                                   heater.get("target", 0.)))
+            progress = self.step_widgets["pid_progress"]
+            progress.set_fraction(pid["progress"])
+            progress.set_text("%d%%" % (pid["progress"] * 100))
+
+        self._pid_query(show)
+        return True
+
+    def _pid_done(self):
+        step = self.flow[self.index]
+        # Stops the progress updates
+        self.step_ready = True
+
+        def show(pid, status):
+            gains = pid["gains"].get(step["heater"])
+            if gains is not None:
+                self.step_widgets["text"].set_label(
+                    _("The new PID values are applied and stored:") + "\n\n"
+                    + self._pid_values(gains))
+            self.step_widgets["pid_temp"].hide()
+            self.step_widgets["pid_progress"].set_fraction(1.)
+            self.step_widgets["pid_progress"].set_text("100%")
+            self._set_ready(True)
+
+        self._pid_query(show)
+
     def _assist_changed(self, switch, param, item):
         self.assist[item["key"]] = switch.get_active()
         self._gcode("SAVE_VARIABLE VARIABLE=snap_j1_assist_%s VALUE=%s"
@@ -477,7 +592,10 @@ class Panel(ScreenPanel):
     # Workflow
     def _start(self, widget):
         item = self.menu_items[self.selected]
-        self.flow = self.flows[item["flows"][self._flow_index(item)]]
+        if item.get("setting") == "pid":
+            self.flow = self.flows["pid_" + self.pid_heater]
+        else:
+            self.flow = self.flows[item["flows"][self._flow_index(item)]]
         self.index = 0
         self._show_step()
 
@@ -566,6 +684,11 @@ class Panel(ScreenPanel):
         return body
 
     def _entered(self):
+        if self.flow is None:
+            # A PID autotune ended after it was quit
+            self.pid_aborting = False
+            self._pid_query(self._pid_show_values)
+            return
         step = self.flow[self.index]
         kind = step["kind"]
         if kind == F.LIVE:
@@ -580,6 +703,8 @@ class Panel(ScreenPanel):
             if step.get("done_text"):
                 self.step_widgets["text"].set_label(step["done_text"])
             self._set_ready(True)
+        elif kind == F.PID:
+            self._pid_done()
         elif kind not in (F.HEAT, F.CHECK, F.CHOICE):
             self._set_ready(True)
 
@@ -667,21 +792,42 @@ class Panel(ScreenPanel):
 
     def _quit(self):
         self.live_running = False
+        step = self.flow[self.index]
+        if step["kind"] == F.PID:
+            # The autotune holds the g-code queue; it stops through the
+            # API and its error is expected
+            self.pid_aborting = True
+            self._back_to_menu()
+            # Moonraker's name for Klipper's snapmaker_j1/pid_abort
+            self._screen._ws.send_method("printer.snapmaker_j1.pid_abort")
+            return
+        if any(s["kind"] == F.PID for s in self.flow):
+            # Nothing to undo before the autotune started
+            self._back_to_menu()
+            return
         script = "SNAPMAKER_CAL_END SAVE=0"
-        if self.flow[self.index]["kind"] == F.PRINT:
+        if step["kind"] == F.PRINT:
             script = "CANCEL_PRINT\n" + script
         self._back_to_menu()
         self._screen._ws.api.gcode_script(script)
 
     def _error(self, message):
         logging.error("Calibration step failed: %s", message)
+        if self.pid_aborting:
+            self.pid_aborting = False
+            return
         buttons = [{"name": _("OK"), "response": Gtk.ResponseType.OK,
                     "style": "dialog-info"}]
-        label = self._label(
-            _("The machine failed to obtain the data. You can clean the"
-              " nozzle and retry.") + "\n\n" + message)
+        pid = (self.flow is not None
+               and self.flow[self.index]["kind"] == F.PID)
+        intro = (_("The PID auto tune failed.") if pid else
+                 _("The machine failed to obtain the data. You can clean"
+                   " the nozzle and retry."))
+        label = self._label(intro + "\n\n" + message)
         if self.flow is not None:
             self._quit()
+            # Quitting a failed autotune expects no further error
+            self.pid_aborting = False
         self._gtk.Dialog(_("Calibration"), buttons, label,
                          lambda d, r: self._gtk.remove_dialog(d))
 
@@ -692,6 +838,18 @@ class Panel(ScreenPanel):
         return False
 
     # Step builders
+    def _build_pid(self, step, box):
+        self.pid_aborting = False
+        value = self._styled(Gtk.Label(label="-", xalign=0), "snap-value")
+        self.step_widgets["pid_temp"] = value
+        box.pack_start(value, False, False, 0)
+        progress = Gtk.ProgressBar(show_text=True)
+        self.step_widgets["pid_progress"] = progress
+        box.pack_start(progress, False, False, 0)
+        if self.pid_timer is None:
+            self.pid_timer = GLib.timeout_add_seconds(PID_POLL,
+                                                      self._pid_poll)
+
     def _build_info(self, step, box):
         pass
 

@@ -175,6 +175,7 @@ E0 111, E1 011 (1 = high).
 | XY offset calibration of T1 | horizontal probing of the bed center feature | `snapmaker_j1_probe` |
 | T1 nozzle height adjustment | `SNAPMAKER_NOZZLE_HEIGHT` | `snapmaker_j1_probe` |
 | Build plate thickness | Z origin shift, setting in the calibration menu | `snapmaker_j1_probe` |
+| PID autotune of the nozzles (stock: 235C, 8 cycles, classic Ziegler-Nichols), here also of the bed | `PID_CALIBRATE` replaced: result applied and stored at once, abortable; `SNAPMAKER_PID_RESET`; "PID Auto Tune" in the calibration menu | `snapmaker_j1`, KlipperScreen add-on |
 | Analog filament runout/jam detection | motion sensor based on the analog reading | `snapmaker_j1_filament_sensor` |
 | Pause / resume with parking, priming and wiping | `PAUSE`/`RESUME` macros, `SAVE_DUAL_CARRIAGE_STATE` | macros |
 | Paused print: part fans off, nozzles off and bed at a standby temperature after a delay, heat again (RESUME, load filament) | `SNAPMAKER_SET_PAUSE_STANDBY BED= DELAY=`, `SNAPMAKER_PAUSE_HEAT`, "Pause Standby" panel | macros, KlipperScreen add-on |
@@ -610,8 +611,8 @@ calibration card.
 ### Calibration menu (KlipperScreen)
 
 The touch screen menu reproduces the stock "Calibration" page with its
-five entries, plus a "Build Plate" entry for the plate thickness; the
-first three can be switched between the assisted (sensor) and the
+five entries, plus "PID Auto Tune" and a "Build Plate" entry for the
+plate thickness; the first three can be switched between the assisted (sensor) and the
 manual workflow ("Assist Mode"):
 
 | Entry | Assisted workflow | Manual workflow |
@@ -621,6 +622,7 @@ manual workflow ("Assist Mode"):
 | XY Offset Calibration | remove plate, heat, clean, automatic probing of the bed center feature, restore | test print of X/Y line patterns, then entering the observed shift |
 | Offset Calibration Check | plate check, load filament, check print, Z and XY evaluation pages | - |
 | Vibration Compensation | plate check, load filament, test print with 80/65/50/35Hz areas, choice per axis | - |
+| PID Auto Tune | choice of left nozzle, right nozzle or heated bed; the stored values (default or tuned) and "Restore Default"; info page, autotune with temperature and progress (Quit aborts it), result | - |
 | Build Plate | setting: plate thickness in 0.1mm steps (default 5.0mm, the PEI glass plate), stored at once | - |
 
 The live bar follows the stock HorizontalPrecisionIndicator: the orange
@@ -757,6 +759,21 @@ this much above it.  The thickness (`snap_j1_plate_thickness`, default
 are stored together, so they cannot get out of step.
 `SNAPMAKER_SET_VIBRATION_FREQ AXIS= FREQ=` stores an input shaper
 frequency.
+
+`PID_CALIBRATE HEATER= TARGET=` is replaced by the J1 module: it measures
+as Klipper's (the same classic Ziegler-Nichols rule as the stock
+firmware's autotune, which tunes the nozzles at 235C and not the bed),
+moves the nozzles 50mm off their parking wipers first
+(`SNAPMAKER_PID_PREPARE`, homing X if needed; a parked nozzle loses
+heat into its silicone wiper, which falsifies the result), applies the
+result at once and stores it as `snap_j1_pid_<heater>`,
+which overrides the PID values of `printer.cfg` when Klipper starts.
+The Klipper endpoint `snapmaker_j1/pid_abort` (Moonraker:
+`POST /printer/snapmaker_j1/pid_abort`) stops a running autotune and
+keeps the previous values.  `SNAPMAKER_PID_RESET HEATER=` uses the
+values of `printer.cfg` again.  The status of `snapmaker_j1` reports
+`pid` (the heater being tuned, its progress, the gains in use, the
+defaults and the heaters with stored values).
 
 ## G-code compatibility
 

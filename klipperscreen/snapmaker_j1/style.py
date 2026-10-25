@@ -82,6 +82,11 @@ CSS = """
     padding: 0 0 0 %(d16)s;
     min-height: %(d56)s;
 }
+/* Line above the optional entries */
+.snapj1 button.snap-section.snap-separated {
+    border-top: 1px solid %(explain)s;
+    border-radius: 0;
+}
 .snapj1 button.snap-section label {
     color: %(title)s;
     font-size: %(body2)s;

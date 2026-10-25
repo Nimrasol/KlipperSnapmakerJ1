@@ -166,7 +166,7 @@ E0 111, E1 011 (1 = high).
 | Nozzle diameter check before a print ("Inconsistent Nozzle Diameter") | `SNAPMAKER_CHECK_NOZZLES` from `SDCARD_PRINT_FILE`, `action:prompt` dialog | `snapmaker_j1` |
 | Missing hotend ("nozzle loss") | `max_temp` shutdown, message names the undetected nozzle | `snapmaker_j1` |
 | Fans (part, hotend, electronics) | `fan_generic`, `heater_fan`, `temperature_fan` | none |
-| Case light (M355) | `[output_pin]` | macros |
+| Case light (M355), dimmed after a time without touch | `[output_pin]`, "Light" panel | macros, KlipperScreen add-on |
 | Nozzle contact probing (Z) | probe interface using the active nozzle's switch | `snapmaker_j1_probe` |
 | Calibration touches (fast touch, slow touches, switch opening point, trimmed mean) | stock sequence on the probe switch | `snapmaker_j1_probe` |
 | StallGuard crash detection while probing | DIAG line armed with the nozzle switch on one trsync, thresholds from SG_RESULT | `snapmaker_j1_probe` |
@@ -667,12 +667,24 @@ Shaper panels hidden (the J1 calibration menu covers them; the J1 has
 no accelerometer).  The same include sets screen blanking to 15 minutes
 both while idle and while printing, matching the stock J1 screen saver
 delay (KlipperScreen stores the value in KlipperScreen.conf on its first
-start; "Screen Power Off Time" changes it).  Under Wayland KlipperScreen
+start; "More → Light" changes it).  Under Wayland KlipperScreen
 only shows a black page, so the add-on also switches the backlight off
 (`bl_power` of `/sys/class/backlight`, writable for the group `video`
 on KlipperSnapmakerJ1-os) and on again when a touch closes the screen
 saver; the touch screen stays active.  The stock firmware instead
 dimmed the screen to 10% and showed print status.
+
+"More → Light" (also in the print menu) replaces the generic Pins panel:
+the case light in four steps (off, low 2%, medium 50%, max), dimmed to a
+chosen step after a time without touch on the display and back to its
+step at the next touch, and the display settings of KlipperScreen
+(screen power off times, wake delay, DPMS), which the add-on removes
+from the KlipperScreen settings.  While Klipper is busy (heating,
+homing) the slider keeps the new step with a busy indicator and the
+step is sent until Klipper takes it.  The chosen step is stored as
+`snap_j1_case_light` (save_variables) and set again when Klipper
+starts; the dim settings are stored in
+`~/.config/snapmaker_j1/klipperscreen.json`.
 
 The add-on hides the shutdown button of the action
 bar (the J1 is switched off with its power switch; the emergency stop

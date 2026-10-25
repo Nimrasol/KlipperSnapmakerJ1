@@ -15,7 +15,8 @@ from gi.repository import GLib, Gtk
 from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
-from . import calibration, datetime_panel, filament, hostname, pause, style
+from . import (calibration, datetime_panel, filament, hostname, light,
+               pause, style)
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
@@ -24,6 +25,7 @@ FILAMENT_PANEL = "snapmaker_filament"
 HOSTNAME_PANEL = "snapmaker_hostname"
 DATETIME_PANEL = "snapmaker_datetime"
 PAUSE_PANEL = "snapmaker_pause"
+LIGHT_PANEL = "snapmaker_light"
 THEME = "snapmaker-j1"
 # Klipper object names that KlipperScreen would show as "Extruder" and
 # "Extruder1"; the other devices are named in the printer config
@@ -58,6 +60,8 @@ def init(screen):
             return datetime_panel
         if panel == PAUSE_PANEL:
             return pause
+        if panel == LIGHT_PANEL:
+            return light
         module = load_panel(panel)
         if panel == "job_status":
             _patch_progress_ring(screen, module.Panel)
@@ -69,6 +73,8 @@ def init(screen):
             _patch_board_fan(module.Panel)
         elif panel == "pins":
             _patch_device_label(module.Panel, "add_pin")
+        elif panel == "settings":
+            _patch_settings_options(module.Panel)
         return module
 
     screen._load_panel = _load_panel
@@ -179,6 +185,7 @@ def init(screen):
 
     _patch_screensaver()
     datetime_panel.apply_clock(screen)
+    screen.snapmaker_case_light = light.CaseLight(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
 
 
@@ -407,6 +414,21 @@ def _patch_board_fan(panel_class):
     panel_class.load_fans = _load_fans
     panel_class.activate = _activate
     panel_class.deactivate = _deactivate
+
+
+def _patch_settings_options(panel_class):
+    # The display settings are in the light panel
+    add_option = panel_class.add_option
+    if getattr(add_option, "snapmaker_j1", False):
+        return
+
+    def _add_option(self, boxname, opt_array, opt_name, option):
+        if boxname == "settings" and opt_name in light.DISPLAY_OPTIONS:
+            return {}
+        return add_option(self, boxname, opt_array, opt_name, option)
+
+    _add_option.snapmaker_j1 = True
+    panel_class.add_option = _add_option
 
 
 def _patch_device_label(panel_class, method):

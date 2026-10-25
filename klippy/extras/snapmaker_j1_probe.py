@@ -5,7 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import collections, logging, math
 import mcu
-from . import probe
+from . import probe, tmc
 
 # Each J1 toolhead detects a nozzle contact with its own switch.  The
 # probe uses the switch of the currently active carriage, so the
@@ -40,10 +40,19 @@ REASON_STALLGUARD = 8
 SG_DEFAULTS = collections.OrderedDict([
     ('stepper_x', 20), ('dual_carriage', 20), ('stepper_y', 20),
     ('stepper_z', 80)])
-SG_MEASURE = {'stepper_x': (12., 0., 50.), 'dual_carriage': (12., 0., 50.),
-              'stepper_y': (10., 0., 50.), 'stepper_z': (3., -25., 3.)}
+SG_MEASURE = {'stepper_z': (3., -25., 3.)}
+# The stock firmware also derives the X and Y thresholds from travel
+# moves (SG_RESULT / 12 and / 10 at about 75 mm/s), but at the probe speed
+# (13.3 mm/s) SG_RESULT is only 68-86 on the J1, so a threshold of 30-35
+# (stall at SG_RESULT <= 2 x threshold) stops the touches without
+# obstacle; X and Y keep the default of 20
 SG_MIN_CRUISE_TIME = 0.300
 SG_MIN_SAMPLES = 3
+# The stock firmware only takes a stall of an axis faster than this
+# (motion_control.h: MOTION_STALL_GUARD_XY_SPEED, _Z_SPEED, mm/s): a
+# motor starting from standstill gives a low SG_RESULT
+SG_MIN_SPEED = {'stepper_x': 10., 'dual_carriage': 10., 'stepper_y': 10.,
+                'stepper_z': 4.8}
 
 # Endstop of a nozzle switch.  The DIAG (StallGuard) line of a driver
 # can be armed to stop the same move; the move then fails with a stall
@@ -201,9 +210,12 @@ class StallGuard:
                 self.fixed.add(name)
             self.thresholds[name] = threshold
         self.tmcs = {}
+        self.steppers = {}
         self.printer.register_event_handler('klippy:connect',
                                             self._handle_connect)
     def _handle_connect(self):
+        kin = self.printer.lookup_object('toolhead').get_kinematics()
+        steppers = {s.get_name(): s for s in kin.get_steppers()}
         for name in self.lines:
             tmc = self.printer.lookup_object('tmc2209 ' + name, None)
             if tmc is None:
@@ -211,6 +223,7 @@ class StallGuard:
                     "StallGuard of %s requires a [tmc2209 %s] section"
                     % (name, name))
             self.tmcs[name] = tmc
+            self.steppers[name] = steppers.get(name)
     def has(self, name):
         return name in self.lines
     # Driver registers
@@ -227,15 +240,22 @@ class StallGuard:
         return previous
     def arm(self, name):
         # StallGuard4 works in StealthChop only; the DIAG output needs
-        # TCOOLTHRS above the step interval (as in the stock firmware)
+        # TCOOLTHRS above the step interval, which here also keeps it off
+        # below the stock minimum speed (the start of a move)
+        tcoolthrs = 0xfffff
+        if self.steppers.get(name) is not None:
+            tcoolthrs = tmc.TMCtstepHelper(self.tmcs[name].mcu_tmc,
+                                           SG_MIN_SPEED[name],
+                                           pstepper=self.steppers[name])
         return self._write_fields(name, [
-            ('sgthrs', self.thresholds[name]), ('tcoolthrs', 0xfffff),
+            ('sgthrs', self.thresholds[name]), ('tcoolthrs', tcoolthrs),
             ('tpwmthrs', 0), ('en_spreadcycle', 0)])
     def disarm(self, name, previous):
         self._write_fields(name, list(previous.items()))
     # Threshold measurement
     def _wants_measurement(self, name):
-        return (self.measure and name in self.lines and name not in self.fixed
+        return (self.measure and name in self.lines and name in SG_MEASURE
+                and name not in self.fixed
                 and name not in self.measured
                 and not self.tmcs[name].fields.get_field('en_spreadcycle'))
     def _measurable(self, toolhead, start, target, speed, axis_steppers):

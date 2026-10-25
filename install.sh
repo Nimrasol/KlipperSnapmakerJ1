@@ -144,6 +144,10 @@ if [ -n "$APK" ]; then
     python3 "$REPO_DIR/scripts/snapmaker_j1_extract_assets.py" "$APK" \
         --images "$IMAGE_DIR" --gcodes "$GCODE_DIR" --skip-existing
 fi
+# Test prints of this repository (manual XY calibration)
+for gcode in "$REPO_DIR"/gcodes/*.gcode; do
+    ln -sfn "$gcode" "$GCODE_DIR/$(basename "$gcode")"
+done
 
 # KlipperScreen configuration: enable add-ons, select the theme and
 # include the J1 menu

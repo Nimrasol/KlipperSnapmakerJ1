@@ -640,9 +640,10 @@ manual workflow ("Assist Mode"):
 | Build Plate | setting: plate thickness in 0.1mm steps (default 5.0mm, the PEI glass plate), stored at once | - |
 
 The manual XY calibration prints
-`~/printer_data/gcodes/snapmaker_j1/snapmaker_xy_offset_test.gcode`,
-which the user provides: the stock application's XY test lines are
-made for the larger A400 bed (they reach Y251).  It is the dual
+`gcodes/snapmaker_xy_offset_test.gcode` of this repository (linked to
+`~/printer_data/gcodes/snapmaker_j1/` by install.sh); the stock
+application's XY test lines are made for the larger A400 bed (they
+reach Y251).  It is the dual
 extruder vernier model "Offset_X_Y_dual_extruder" (remix with + and -
 rows, 0.1mm per line), sliced for the J1 in OrcaSlicer with the left
 extruder for part 1 (frame) and the right extruder for part 2 (combs).
@@ -764,9 +765,12 @@ This links `klipperscreen/snapmaker_j1` as a KlipperScreen
 add-on, enables add-ons, adds the "Calibration" main menu entry and
 copies the pictures to `~/printer_data/config/snapmaker_j1/images` and
 the calibration check and vibration test prints to
-`~/printer_data/gcodes/snapmaker_j1/`.  The
-pictures and test prints belong to Snapmaker and are not part of this
-repository; `scripts/snapmaker_j1_extract_assets.py` takes them from
+`~/printer_data/gcodes/snapmaker_j1/`, where it also links the manual
+XY test print of this repository (`gcodes/`).  Those pictures and test
+prints belong to Snapmaker and are not part of this repository (the
+example pictures of the manual XY calibration are, in
+`klipperscreen/snapmaker_j1/images`);
+`scripts/snapmaker_j1_extract_assets.py` takes them from
 the display application of the user's own printer
 (`/data/app/com.snapmaker.j1-*/base.apk` on the userdata partition).
 Pictures given with `--images` take precedence.  The stock firmware

@@ -75,6 +75,8 @@ def init(screen):
             _patch_device_label(module.Panel, "add_pin")
         elif panel == "settings":
             _patch_settings_options(module.Panel)
+        elif panel == "extrude":
+            _patch_extrude(module.Panel)
         return module
 
     screen._load_panel = _load_panel
@@ -427,6 +429,24 @@ def _patch_board_fan(panel_class):
     panel_class.load_fans = _load_fans
     panel_class.activate = _activate
     panel_class.deactivate = _deactivate
+
+
+def _patch_extrude(panel_class):
+    # A parked nozzle presses the filament into its silicone wiper; the
+    # extrude and retract buttons move it off first, as load and unload do
+    extrude = panel_class.extrude
+    if getattr(extrude, "snapmaker_j1", False):
+        return
+
+    def _extrude(self, widget, direction):
+        extruder = self._printer.get_stat("toolhead", "extruder")
+        self._screen._ws.api.gcode_script(
+            "_SNAPMAKER_FILAMENT_POSITION TOOL=%d"
+            % (1 if extruder == "extruder1" else 0))
+        return extrude(self, widget, direction)
+
+    _extrude.snapmaker_j1 = True
+    panel_class.extrude = _extrude
 
 
 def _patch_settings_options(panel_class):

@@ -21,6 +21,9 @@ FILE_TAIL_SIZE = 128 * 1024
 # PID gains of a heater from PID_CALIBRATE (save_variables), used instead
 # of those in printer.cfg
 PID_VARIABLE = 'snap_j1_pid_%s'
+# Temperature peaks Klipper's autotune measures before it is done
+PID_PEAKS = 12
+PID_CHECK_TIME = 1.
 
 # Board revision voltage divider on the hw_version_pin (upper bounds)
 HW_VERSION_MV = [450., 700., 1400., 2000., 2700., 3200.]
@@ -106,6 +109,15 @@ class SnapmakerJ1:
         self.nozzle_check = {'filename': None, 'mismatch': False,
                              'file': [None, None], 'machine': [None, None]}
         self.print_state = None
+        # PID calibration in progress (heater, ControlAutoTune) and its
+        # abort request, which comes through the API while the calibration
+        # holds the g-code queue
+        self.pid_tune = None
+        self.pid_abort = False
+        self.pid_defaults = {}
+        self.pid_stored = set()
+        self.printer.lookup_object('webhooks').register_endpoint(
+            'snapmaker_j1/pid_abort', self._handle_pid_abort)
         self.printer.register_event_handler('klippy:connect',
                                             self._load_pid_gains)
         self.printer.register_event_handler('klippy:ready', self._handle_ready)
@@ -120,6 +132,9 @@ class SnapmakerJ1:
         self.gcode.register_command(
             'SNAPMAKER_CHECK_NOZZLES', self.cmd_SNAPMAKER_CHECK_NOZZLES,
             desc=self.cmd_SNAPMAKER_CHECK_NOZZLES_help)
+        self.gcode.register_command(
+            'SNAPMAKER_PID_RESET', self.cmd_SNAPMAKER_PID_RESET,
+            desc=self.cmd_SNAPMAKER_PID_RESET_help)
     def _handle_ready(self):
         # PID_CALIBRATE applies and stores its result itself, so no
         # SAVE_CONFIG (and Klipper restart) is needed.  Replaced once all
@@ -223,31 +238,65 @@ class SnapmakerJ1:
     def _load_pid_gains(self):
         svv = self.printer.lookup_object('save_variables', None)
         variables = svv.allVariables if svv is not None else {}
+        settings = self.printer.lookup_object('configfile').get_status(
+            self.reactor.monotonic())['settings']
         pheaters = self.printer.lookup_object('heaters')
         for name in pheaters.get_all_heaters():
-            gains = variables.get(PID_VARIABLE % (name.split()[-1],))
+            short = name.split()[-1]
+            section = settings.get(name, {})
+            if section.get('control') == 'pid':
+                self.pid_defaults[short] = [
+                    section['pid_kp'], section['pid_ki'], section['pid_kd']]
+            gains = variables.get(PID_VARIABLE % (short,))
             if gains is not None:
                 self._set_pid_gains(pheaters.lookup_heater(name), *gains)
+                self.pid_stored.add(short)
     def _set_pid_gains(self, heater, Kp, Ki, Kd):
         heater.set_control(heaters.ControlPID(heater, PIDGains(Kp, Ki, Kd)))
+    def _lookup_idle_heater(self, gcmd):
+        pheaters = self.printer.lookup_object('heaters')
+        try:
+            heater = pheaters.lookup_heater(gcmd.get('HEATER'))
+        except self.printer.config_error as e:
+            raise gcmd.error(str(e))
+        # Changing the control switches the heater off
+        if heater.get_status(self.reactor.monotonic())['target']:
+            raise gcmd.error("Heater %s is in use" % (heater.get_name(),))
+        return heater
+    def _handle_pid_abort(self, web_request):
+        if self.pid_tune is not None:
+            self.pid_abort = True
     cmd_PID_CALIBRATE_help = "Run PID calibration test"
     def cmd_PID_CALIBRATE(self, gcmd):
         # As Klipper's PID_CALIBRATE, with the result applied at once and
-        # kept in save_variables instead of printer.cfg
-        heater_name = gcmd.get('HEATER')
+        # kept in save_variables instead of printer.cfg, and an abort
+        # (endpoint snapmaker_j1/pid_abort)
+        heater = self._lookup_idle_heater(gcmd)
         target = gcmd.get_float('TARGET')
-        pheaters = self.printer.lookup_object('heaters')
-        try:
-            heater = pheaters.lookup_heater(heater_name)
-        except self.printer.config_error as e:
-            raise gcmd.error(str(e))
-        self.printer.lookup_object('toolhead').get_last_move_time()
+        short = heater.get_name().split()[-1]
+        # Nozzles off the parking wipers (macro of the J1 configuration)
+        self.gcode.run_script_from_command(
+            "SNAPMAKER_PID_PREPARE HEATER=%s" % (short,))
+        toolhead = self.printer.lookup_object('toolhead')
+        toolhead.get_last_move_time()
         calibrate = pid_calibrate.ControlAutoTune(heater, target)
         old_control = heater.set_control(calibrate)
+        self.pid_tune = (short, calibrate, old_control)
+        self.pid_abort = False
         try:
-            pheaters.set_temperature(heater, target, True)
+            heater.set_temp(target)
+            eventtime = self.reactor.monotonic()
+            while (not self.printer.is_shutdown() and not self.pid_abort
+                   and heater.check_busy(eventtime)):
+                toolhead.get_last_move_time()
+                eventtime = self.reactor.pause(eventtime + PID_CHECK_TIME)
         finally:
             heater.set_control(old_control)
+            self.pid_tune = None
+        if self.pid_abort:
+            # Stopped on request, the values stay as they were
+            gcmd.respond_info("PID calibration of %s aborted" % (short,))
+            return
         if calibrate.check_busy(0., 0., 0.):
             raise gcmd.error("pid_calibrate interrupted")
         Kp, Ki, Kd = calibrate.calc_final_pid()
@@ -256,16 +305,49 @@ class SnapmakerJ1:
         self._set_pid_gains(heater, Kp, Ki, Kd)
         self.gcode.run_script_from_command(
             "SAVE_VARIABLE VARIABLE=%s VALUE=[%.3f,%.3f,%.3f]"
-            % (PID_VARIABLE % (heater.get_name().split()[-1],), Kp, Ki, Kd))
+            % (PID_VARIABLE % (short,), Kp, Ki, Kd))
+        self.pid_stored.add(short)
         gcmd.respond_info("PID parameters: pid_Kp=%.3f pid_Ki=%.3f pid_Kd=%.3f"
                           "\nApplied and stored" % (Kp, Ki, Kd))
+    cmd_SNAPMAKER_PID_RESET_help = "Use the PID values of printer.cfg again"
+    def cmd_SNAPMAKER_PID_RESET(self, gcmd):
+        heater = self._lookup_idle_heater(gcmd)
+        short = heater.get_name().split()[-1]
+        if short not in self.pid_defaults:
+            raise gcmd.error("%s has no PID values in printer.cfg" % (short,))
+        self._set_pid_gains(heater, *self.pid_defaults[short])
+        self.gcode.run_script_from_command(
+            "SAVE_VARIABLE VARIABLE=%s VALUE=None" % (PID_VARIABLE % (short,)))
+        self.pid_stored.discard(short)
+        gcmd.respond_info("PID parameters of %s from printer.cfg: pid_Kp=%.3f"
+                          " pid_Ki=%.3f pid_Kd=%.3f"
+                          % ((short,) + tuple(self.pid_defaults[short])))
+    def _pid_status(self, eventtime):
+        gains = {}
+        tune = self.pid_tune
+        pheaters = self.printer.lookup_object('heaters')
+        for name in pheaters.get_all_heaters():
+            control = pheaters.lookup_heater(name).control
+            if tune and tune[0] == name.split()[-1]:
+                # The control the heater gets back after the autotune
+                control = tune[2]
+            if isinstance(control, heaters.ControlPID):
+                gains[name.split()[-1]] = [
+                    round(g * heaters.PID_PARAM_BASE, 3)
+                    for g in (control.Kp, control.Ki, control.Kd)]
+        return {'calibrating': tune[0] if tune else None,
+                'progress': (min(1., len(tune[1].peaks) / float(PID_PEAKS))
+                             if tune else 0.),
+                'gains': gains, 'defaults': dict(self.pid_defaults),
+                'stored': sorted(self.pid_stored)}
     def get_status(self, eventtime):
         return {'hardware_version': self.hw_version,
                 'detected_hardware_version': self.detected_hw_version,
                 'nozzle_t0': self._nozzle_info(0),
                 'nozzle_t1': self._nozzle_info(1),
                 'nozzle_check': dict(self.nozzle_check),
-                'bed_feedback': self.bed_feedback_state}
+                'bed_feedback': self.bed_feedback_state,
+                'pid': self._pid_status(eventtime)}
     cmd_SNAPMAKER_QUERY_HARDWARE_help = "Report board revision and nozzles"
     def cmd_SNAPMAKER_QUERY_HARDWARE(self, gcmd):
         msg = ["Board revision: configured %d, detected %s (%s mV)"

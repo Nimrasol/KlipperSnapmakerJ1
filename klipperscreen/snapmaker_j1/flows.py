@@ -21,6 +21,11 @@ LOAD = 'load'          # load filament or start the test print
 CHOICE = 'choice'      # choose one of the test print areas
 OFFSET = 'offset'      # enter the right nozzle offset from a test print
 SUCCESS = 'success'    # final page
+PID = 'pid'            # PID autotune of a heater
+
+# Heaters of the PID autotune and their temperatures: the stock firmware
+# tunes the nozzles at 235C (it does not tune the bed)
+PID_HEATERS = [('extruder', 235), ('extruder1', 235), ('heater_bed', 60)]
 
 # Frequencies of the four areas of the vibration test print, in the
 # order of the selection buttons
@@ -32,6 +37,10 @@ def _step(kind, title, text, image=None, **kw):
     s = {'kind': kind, 'title': title, 'text': text, 'image': image}
     s.update(kw)
     return s
+
+def pid_heater_name(heater):
+    return {'extruder': _("Left Nozzle"), 'extruder1': _("Right Nozzle"),
+            'heater_bed': _("Heated Bed")}[heater]
 
 def build():
     """Return (menu, flows). Built at runtime so texts are translated."""
@@ -232,6 +241,23 @@ def build():
                   'pic_j1_calibration_vibration_model', axis='X'),
             success],
     }
+    for heater, temp in PID_HEATERS:
+        flows['pid_' + heater] = [
+            _step(INFO, _("PID Auto Tune - %s") % pid_heater_name(heater),
+                  _("The heater is heated to %d°C and switched on and off"
+                    " several times to measure it; its PID values are"
+                    " calculated from that. This takes about 5 to 15"
+                    " minutes.\n\nKeep the printer closed and the part fans"
+                    " off, and do not touch the heater.") % temp
+                  + (_(" The nozzles first move off their parking wipers.")
+                     if heater != 'heater_bed' else ""),
+                  'gif_calibration_j1_z_offset_heat_noaales_and_bed'),
+            _step(PID, _("PID Auto Tune - %s") % pid_heater_name(heater),
+                  _("The heater is being tuned..."),
+                  'gif_calibration_j1_z_offset_heat_noaales_and_bed',
+                  enter="PID_CALIBRATE HEATER=%s TARGET=%d" % (heater, temp),
+                  heater=heater),
+            success]
     menu = [
         {'key': 'bed', 'title': _("Heated Bed Leveling"), 'assist': True,
          'flows': ('bed_assist', 'bed_manual'),
@@ -276,6 +302,14 @@ def build():
          'texts': (_("To improve the print quality with vibration"
                      " compensation, calibrate the compensation frequency"
                      " following the instructions on the screen."),)},
+        # The entries below the line are optional
+        {'key': 'pid', 'title': _("PID Auto Tune"), 'assist': False,
+         'separator': True,
+         'setting': 'pid', 'flows': (),
+         'images': ('gif_calibration_j1_z_offset_heat_noaales_and_bed',),
+         'texts': (_("Tunes the temperature control of a heater, the"
+                     " nozzles at 235°C, the bed at 60°C. New values apply"
+                     " at once."),)},
         {'key': 'plate', 'title': _("Build Plate"), 'assist': False,
          'setting': 'plate_thickness', 'flows': (),
          'images': ('gif_calibration_j1_xy_offset_restore_machine',),

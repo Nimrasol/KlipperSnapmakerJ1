@@ -319,9 +319,12 @@ xy_probe_z:
 #   PE3, PB5, PE9; revision 1 boards: !PE3 for all four. Without these
 #   pins the fast touches run unguarded.
 #stallguard_measure: True
-#   Derive the thresholds from SG_RESULT during the first travel moves
-#   after a restart (stock: Z SG_RESULT/3 - 25 above 3mm/s, Y /10, X /12
-#   above 50mm/s).
+#   Derive the Z threshold from SG_RESULT during the first travel moves
+#   after a restart (stock: SG_RESULT/3 - 25 above 3mm/s).  The stock
+#   firmware derives X and Y as well (/12 and /10 above 50mm/s), but at
+#   the probe speed of 13.3mm/s SG_RESULT is only 68-86 on the J1, so
+#   those thresholds (30-35, stall at SG_RESULT <= 2 x threshold) stopped
+#   touches without obstacle; X and Y use 20.
 #stallguard_threshold_stepper_x: 20
 #stallguard_threshold_dual_carriage: 20
 #stallguard_threshold_stepper_y: 20
@@ -353,8 +356,10 @@ use Klipper's trigger position.
 
 During the fast touch the DIAG line of the moving driver (Z, Y or the
 active X carriage) is armed together with the nozzle switch on the same
-trsync, with `SGTHRS` set and `TCOOLTHRS`/StealthChop enabled for that
-driver only.  A stall stops the move at once and aborts the calibration
+trsync, with `SGTHRS` set and StealthChop enabled for that driver only.
+`TCOOLTHRS` enables StallGuard above 10mm/s (Z: 4.8mm/s) only, the
+speeds below which the stock firmware ignores a stall: a motor starting
+from standstill gives a low SG_RESULT.  A stall stops the move at once and aborts the calibration
 with "StallGuard stopped the ... axis"; the axis must be homed again (as
 in the stock firmware).  A DIAG line that is already active before the
 move (driver error) is logged and the touch runs without StallGuard.

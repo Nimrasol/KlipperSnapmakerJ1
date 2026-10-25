@@ -93,5 +93,5 @@ class Panel(ScreenPanel):
 
     def _save(self, value):
         self._show()
-        self._screen._ws.klippy.gcode_script(
+        self._screen._ws.api.gcode_script(
             "SNAPMAKER_SET_PAUSE_STANDBY " + value)

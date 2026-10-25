@@ -6,9 +6,7 @@
 #
 # The display module has no battery backed clock, so the time comes from
 # the network; only the time zone is set here.
-import json
 import logging
-import os
 import subprocess
 import time
 
@@ -19,27 +17,18 @@ from gi.repository import GLib, Gtk, Pango
 
 from ks_includes.screen_panel import ScreenPanel
 
+from . import settings
+
 # systemd-timedated sets the time zone; the OS image allows it for the
 # user of KlipperScreen (polkit)
 TIMEDATE = ["busctl", "call", "org.freedesktop.timedate1",
             "/org/freedesktop/timedate1", "org.freedesktop.timedate1"]
 # Seconds after a zone list appears during which taps are ignored
 ZONE_TAP_DELAY = .4
-# Settings of the add-on: KlipperScreen drops unknown options from its own
-# configuration when it starts
-SETTINGS_FILE = os.path.expanduser("~/.config/snapmaker_j1/klipperscreen.json")
-
-
-def _load_settings():
-    try:
-        with open(SETTINGS_FILE) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
 
 
 def show_clock():
-    return bool(_load_settings().get("show_clock", True))
+    return bool(settings.get("show_clock", True))
 
 
 def apply_clock(screen):
@@ -52,14 +41,7 @@ def apply_clock(screen):
 
 
 def set_show_clock(screen, shown):
-    settings = _load_settings()
-    settings["show_clock"] = bool(shown)
-    try:
-        os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
-        with open(SETTINGS_FILE, "w") as f:
-            json.dump(settings, f)
-    except OSError:
-        logging.exception("Saving %s failed", SETTINGS_FILE)
+    settings.save("show_clock", bool(shown))
     apply_clock(screen)
 
 

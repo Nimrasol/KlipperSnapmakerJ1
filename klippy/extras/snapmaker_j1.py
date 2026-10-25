@@ -1,10 +1,12 @@
 # Snapmaker J1 machine support (board revision, nozzle detection,
-# heated bed feedback and print file header handling)
+# heated bed feedback, print file header handling and PID calibration
+# without SAVE_CONFIG)
 #
 # Copyright (C) 2026  Nimrasol
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import os, logging
+from . import heaters, pid_calibrate
 
 ADC_REPORT_TIME = 0.500
 ADC_SAMPLE_TIME = 0.001
@@ -16,6 +18,9 @@ PRINT_CHECK_TIME = 1.
 # Prusa/Orca style slicers write their settings to the end of the file
 FILE_HEADER_LIMIT = 512 * 1024
 FILE_TAIL_SIZE = 128 * 1024
+# PID gains of a heater from PID_CALIBRATE (save_variables), used instead
+# of those in printer.cfg
+PID_VARIABLE = 'snap_j1_pid_%s'
 
 # Board revision voltage divider on the hw_version_pin (upper bounds)
 HW_VERSION_MV = [450., 700., 1400., 2000., 2700., 3200.]
@@ -64,6 +69,13 @@ class AnalogInput:
             return None
         return self.value * ADC_VREF * 1000.
 
+class PIDGains:
+    # The config section ControlPID reads its gains from
+    def __init__(self, Kp, Ki, Kd):
+        self.gains = {'pid_Kp': Kp, 'pid_Ki': Ki, 'pid_Kd': Kd}
+    def getfloat(self, option, *args, **kwargs):
+        return self.gains[option]
+
 class SnapmakerJ1:
     def __init__(self, config):
         self.printer = config.get_printer()
@@ -94,6 +106,8 @@ class SnapmakerJ1:
         self.nozzle_check = {'filename': None, 'mismatch': False,
                              'file': [None, None], 'machine': [None, None]}
         self.print_state = None
+        self.printer.register_event_handler('klippy:connect',
+                                            self._load_pid_gains)
         self.printer.register_event_handler('klippy:ready', self._handle_ready)
         self.printer.register_event_handler('klippy:shutdown',
                                             self._handle_shutdown)
@@ -107,6 +121,12 @@ class SnapmakerJ1:
             'SNAPMAKER_CHECK_NOZZLES', self.cmd_SNAPMAKER_CHECK_NOZZLES,
             desc=self.cmd_SNAPMAKER_CHECK_NOZZLES_help)
     def _handle_ready(self):
+        # PID_CALIBRATE applies and stores its result itself, so no
+        # SAVE_CONFIG (and Klipper restart) is needed.  Replaced once all
+        # commands are registered.
+        self.gcode.register_command('PID_CALIBRATE', None)
+        self.gcode.register_command('PID_CALIBRATE', self.cmd_PID_CALIBRATE,
+                                    desc=self.cmd_PID_CALIBRATE_help)
         self.reactor.register_timer(self._check_hw_version,
                                     self.reactor.monotonic() + 2.)
         if self.bed_feedback_enabled:
@@ -199,6 +219,46 @@ class SnapmakerJ1:
             return self.reactor.NEVER
         return eventtime + BED_CHECK_TIME
     # Status and commands
+    # PID calibration
+    def _load_pid_gains(self):
+        svv = self.printer.lookup_object('save_variables', None)
+        variables = svv.allVariables if svv is not None else {}
+        pheaters = self.printer.lookup_object('heaters')
+        for name in pheaters.get_all_heaters():
+            gains = variables.get(PID_VARIABLE % (name.split()[-1],))
+            if gains is not None:
+                self._set_pid_gains(pheaters.lookup_heater(name), *gains)
+    def _set_pid_gains(self, heater, Kp, Ki, Kd):
+        heater.set_control(heaters.ControlPID(heater, PIDGains(Kp, Ki, Kd)))
+    cmd_PID_CALIBRATE_help = "Run PID calibration test"
+    def cmd_PID_CALIBRATE(self, gcmd):
+        # As Klipper's PID_CALIBRATE, with the result applied at once and
+        # kept in save_variables instead of printer.cfg
+        heater_name = gcmd.get('HEATER')
+        target = gcmd.get_float('TARGET')
+        pheaters = self.printer.lookup_object('heaters')
+        try:
+            heater = pheaters.lookup_heater(heater_name)
+        except self.printer.config_error as e:
+            raise gcmd.error(str(e))
+        self.printer.lookup_object('toolhead').get_last_move_time()
+        calibrate = pid_calibrate.ControlAutoTune(heater, target)
+        old_control = heater.set_control(calibrate)
+        try:
+            pheaters.set_temperature(heater, target, True)
+        finally:
+            heater.set_control(old_control)
+        if calibrate.check_busy(0., 0., 0.):
+            raise gcmd.error("pid_calibrate interrupted")
+        Kp, Ki, Kd = calibrate.calc_final_pid()
+        logging.info("Autotune: final: Kp=%f Ki=%f Kd=%f", Kp, Ki, Kd)
+        Kp, Ki, Kd = [round(v, 3) for v in (Kp, Ki, Kd)]
+        self._set_pid_gains(heater, Kp, Ki, Kd)
+        self.gcode.run_script_from_command(
+            "SAVE_VARIABLE VARIABLE=%s VALUE=[%.3f,%.3f,%.3f]"
+            % (PID_VARIABLE % (heater.get_name().split()[-1],), Kp, Ki, Kd))
+        gcmd.respond_info("PID parameters: pid_Kp=%.3f pid_Ki=%.3f pid_Kd=%.3f"
+                          "\nApplied and stored" % (Kp, Ki, Kd))
     def get_status(self, eventtime):
         return {'hardware_version': self.hw_version,
                 'detected_hardware_version': self.detected_hw_version,

@@ -62,8 +62,7 @@ for module in "$REPO_DIR"/klippy/extras/*.py; do
     exclude "$KLIPPER_DIR" "klippy/extras/$name"
 done
 
-# Printer configuration (included from printer.cfg; SAVE_CONFIG results
-# stay in printer.cfg)
+# Printer configuration (included from printer.cfg)
 mkdir -p "$J1_CONFIG_DIR"
 for cfg in "$REPO_DIR"/config/*.cfg; do
     ln -sfn "$cfg" "$J1_CONFIG_DIR/$(basename "$cfg")"
@@ -75,10 +74,10 @@ elif ! grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
     echo "Add this line to printer.cfg (and remove sections it replaces):"
     echo "  [include $J1_PRINTER_CFG]"
 fi
-# The calibrated values must be in printer.cfg itself: SAVE_CONFIG cannot
-# change values of an included file.  Defaults of an uncalibrated printer
-# (the stock firmware's), added after the include unless printer.cfg (or
-# its SAVE_CONFIG block) already has the section
+# Defaults of an uncalibrated printer (the stock firmware's), in
+# printer.cfg itself so they can be edited there; the calibrations store
+# their results in snapmaker_j1_variables.cfg.  Added after the include
+# unless printer.cfg (or its SAVE_CONFIG block) already has the section
 add_calibrated() {
     local section=$1 comment=$2 lines="" opt
     shift 2
@@ -97,7 +96,7 @@ if grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
     # PID values measured on a J1 with the stock heaters: the bed with
     # PID_CALIBRATE at 60C; the nozzles tuned from heat-up curves at 220C
     # (about 1.5C overshoot instead of 5C with the PID_CALIBRATE result)
-    PID="PID_CALIBRATE (SAVE_CONFIG)"
+    PID="Default; PID_CALIBRATE stores its result in snapmaker_j1_variables.cfg"
     add_calibrated heater_bed "$PID" "control: pid" "pid_Kp: 59.828" \
         "pid_Ki: 1.050" "pid_Kd: 852.544"
     for e in extruder1 extruder; do

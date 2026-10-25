@@ -634,19 +634,8 @@ class Panel(ScreenPanel):
         self._show_step()
 
     def _finish(self):
-        def got(result, method, params, *args):
-            try:
-                pending = result["result"]["status"]["configfile"][
-                    "save_config_pending"]
-            except (KeyError, TypeError):
-                pending = False
-            self._back_to_menu()
-            if pending:
-                # Klipper restarts to apply the new calibration
-                self._screen._ws.api.gcode_script("SAVE_CONFIG")
-
-        self._screen._ws.api.query_objects(
-            {"configfile": ["save_config_pending"]}, got)
+        # The calibration results apply at once (save_variables)
+        self._back_to_menu()
 
     def _back_to_menu(self):
         self.flow = None

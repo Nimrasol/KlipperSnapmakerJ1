@@ -359,10 +359,22 @@ active X carriage) is armed together with the nozzle switch on the same
 trsync, with `SGTHRS` set and StealthChop enabled for that driver only.
 `TCOOLTHRS` enables StallGuard above 10mm/s (Z: 4.8mm/s) only, the
 speeds below which the stock firmware ignores a stall: a motor starting
-from standstill gives a low SG_RESULT.  A stall stops the move at once and aborts the calibration
-with "StallGuard stopped the ... axis"; the axis must be homed again (as
-in the stock firmware).  A DIAG line that is already active before the
-move (driver error) is logged and the touch runs without StallGuard.
+from standstill gives a low SG_RESULT.  `TCOOLTHRS` counts the driver's
+internal clock, which on a J1 runs about 6% off its nominal 12MHz, so
+the value is computed for 80% of these speeds; with the exact value the
+Z touch (5mm/s) was never guarded.  A stall stops the move at once and
+aborts the calibration with "StallGuard stopped the ... axis"; the axis
+must be homed again (as in the stock firmware).  A DIAG line that is
+already active before the move (driver error) is logged and the touch
+runs without StallGuard.
+
+`SNAPMAKER_STALLGUARD_TEST AXIS=X|Y|Z [TOOL=] [DIRECTION=1|-1]
+[DISTANCE=] [SPEED=] [THRESHOLD=]` runs one fast touch from the current
+position, to test the collision detection by blocking the axis by hand,
+and reports whether StallGuard stopped it.  For Z hold a lead screw:
+holding the bed does not load the motor enough (the lead screws give
+the bed a force of about 300N).  `THRESHOLD=255` forces a stop of an
+unblocked axis, which tests its DIAG line without blocking it.
 
 #### [snapmaker_j1_filament_sensor]
 

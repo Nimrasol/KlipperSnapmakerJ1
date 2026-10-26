@@ -56,6 +56,10 @@ SG_MIN_SAMPLES = 3
 # motor starting from standstill gives a low SG_RESULT
 SG_MIN_SPEED = {'stepper_x': 10., 'dual_carriage': 10., 'stepper_y': 10.,
                 'stepper_z': 4.8}
+# TCOOLTHRS counts the driver's internal clock, which on the J1 runs about
+# 6% off the nominal 12MHz: with the exact value the Z touch (5 mm/s)
+# stayed below the threshold and was never guarded
+SG_CLOCK_MARGIN = 0.8
 
 # Endstop of a nozzle switch.  The DIAG (StallGuard) line of a driver
 # can be armed to stop the same move; the move then fails with a stall
@@ -247,9 +251,10 @@ class StallGuard:
         # below the stock minimum speed (the start of a move)
         tcoolthrs = 0xfffff
         if self.steppers.get(name) is not None:
-            tcoolthrs = tmc.TMCtstepHelper(self.tmcs[name].mcu_tmc,
-                                           SG_MIN_SPEED[name],
-                                           pstepper=self.steppers[name])
+            tcoolthrs = tmc.TMCtstepHelper(
+                self.tmcs[name].mcu_tmc,
+                SG_MIN_SPEED[name] * SG_CLOCK_MARGIN,
+                pstepper=self.steppers[name])
         return self._write_fields(name, [
             ('sgthrs', self.thresholds[name]), ('tcoolthrs', tcoolthrs),
             ('tpwmthrs', 0), ('en_spreadcycle', 0)])
@@ -423,7 +428,7 @@ class SnapmakerJ1Probe:
         self._reset_calibration()
         gcode = self.printer.lookup_object('gcode')
         for cmd in ['PROBE_XY_CENTER', 'Z_ENDSTOP_ADJUST', 'QUERY_STALLGUARD',
-                    'SET_PLATE_THICKNESS',
+                    'STALLGUARD_TEST', 'SET_PLATE_THICKNESS',
                     'CAL_START', 'CAL_MOVE', 'CAL_DATUM', 'CAL_HEIGHT',
                     'CAL_SET_ORIGIN', 'CAL_XY', 'CAL_NOZZLE_OFFSET',
                     'CAL_FINISH']:
@@ -787,6 +792,56 @@ class SnapmakerJ1Probe:
                        % (name, sg.thresholds[name], source, line.pin,
                           "active" if line.is_active() else "inactive"))
         gcmd.respond_info("\n".join(msg))
+    cmd_SNAPMAKER_STALLGUARD_TEST_help = (
+        "Fast touch with StallGuard from the current position, to test the"
+        " collision detection by blocking the axis (AXIS=X|Y|Z TOOL="
+        " DIRECTION=1|-1 DISTANCE= SPEED= THRESHOLD=)")
+    def cmd_SNAPMAKER_STALLGUARD_TEST(self, gcmd):
+        self._check_homed()
+        axis_name = gcmd.get('AXIS').upper()
+        if axis_name not in ('X', 'Y', 'Z'):
+            raise gcmd.error("AXIS must be X, Y or Z")
+        axis = "XYZ".index(axis_name)
+        tool = gcmd.get_int('TOOL', self._active_index(), minval=0, maxval=1)
+        direction = gcmd.get_int('DIRECTION', -1)
+        if direction not in (1, -1):
+            raise gcmd.error("DIRECTION must be 1 or -1")
+        distance = gcmd.get_float(
+            'DISTANCE', self.z_distance if axis == 2 else self.xy_distance,
+            above=0.)
+        speed = gcmd.get_float(
+            'SPEED', self.z_speed if axis == 2 else self.xy_speed, above=0.)
+        self._select_carriage(tool)
+        # THRESHOLD= replaces the threshold for this touch; 255 stops an
+        # unblocked axis, which tests the DIAG line without a collision
+        name = self._axis_stepper(axis)
+        sg = self.stallguard
+        threshold = sg.thresholds.get(name)
+        if name in sg.thresholds:
+            sg.thresholds[name] = gcmd.get_int('THRESHOLD', threshold,
+                                               minval=1, maxval=255)
+        self._set_power(True)
+        try:
+            self._touch(axis, direction, distance, speed, True)
+        except gcmd.error as e:
+            msg = str(e)
+            if msg.startswith("StallGuard stopped"):
+                gcmd.respond_info("%s axis: StallGuard detected the"
+                                  " blockage (home %s before moving it)"
+                                  % (axis_name, axis_name))
+                return
+            if msg.startswith("No nozzle contact"):
+                gcmd.respond_info("%s axis: no StallGuard stop and no nozzle"
+                                  " contact" % (axis_name,))
+                return
+            raise
+        finally:
+            if name in sg.thresholds:
+                sg.thresholds[name] = threshold
+            if not self.cal_active:
+                self._set_power(False)
+        gcmd.respond_info("%s axis: stopped by nozzle contact, not by the"
+                          " StallGuard" % (axis_name,))
     # Stored calibration
     def _load_calibration(self):
         svv = self.printer.lookup_object('save_variables', None)

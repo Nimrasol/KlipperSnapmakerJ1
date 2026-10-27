@@ -6,6 +6,10 @@
 import os, json, logging
 
 CHECKPOINT_TIME = 0.250
+# Check for a print start while idle: the idle_timeout "printing" event
+# alone is not enough, a print start macro may move the toolhead before
+# the file is opened, and the file then runs without a new event
+IDLE_CHECK_TIME = 1.
 CHECKPOINT_HISTORY = 64
 ABNORMAL_SIGNAL_TIME = 1.
 
@@ -33,6 +37,7 @@ class SnapmakerJ1PowerLoss:
         self.enabled = True
         self.signal_state = False
         self.print_seen = False
+        self.resuming = False
         self.checkpoints = []
         self.next_save_time = 0.
         self.last_saved_z = None
@@ -72,19 +77,33 @@ class SnapmakerJ1PowerLoss:
                 f.flush()
                 os.fsync(f.fileno())
             os.rename(tmpname, self.filename)
+            self._sync_dir()
         except (IOError, OSError):
             logging.exception("Unable to write power loss state %s",
                               self.filename)
+    def _sync_dir(self):
+        # A rename or removal is only durable with its directory (the J1
+        # root file system commits every 60s)
+        dirfd = os.open(os.path.dirname(self.filename), os.O_RDONLY)
+        try:
+            os.fsync(dirfd)
+        finally:
+            os.close(dirfd)
     def _remove(self):
         self.pending = None
+        if self.resuming:
+            # M23 of the recovery resets the file; the state stays until
+            # the resumed print stores a new one
+            return
         try:
             os.remove(self.filename)
+            self._sync_dir()
         except OSError:
             pass
     # Event handling
     def _handle_ready(self):
         self.checkpoint_timer = self.reactor.register_timer(
-            self._checkpoint_event)
+            self._checkpoint_event, self.reactor.NOW)
         # A sense input that stays active after startup indicates a wiring
         # or hardware problem - do not act on it (as the stock firmware)
         self.reactor.register_timer(self._check_abnormal_signal,
@@ -162,7 +181,7 @@ class SnapmakerJ1PowerLoss:
             if not self.print_seen:
                 # Other activity (eg homing before a recovery) must not
                 # discard a stored state
-                return self.reactor.NEVER
+                return eventtime + IDLE_CHECK_TIME
             # A finished or cancelled print needs no recovery (a paused or
             # failed one may still be resumed)
             print_stats = self.printer.lookup_object('print_stats')
@@ -173,12 +192,21 @@ class SnapmakerJ1PowerLoss:
             if state in ('complete', 'cancelled', 'standby'):
                 self.checkpoints = []
                 self._remove()
-            return self.reactor.NEVER
+            return eventtime + IDLE_CHECK_TIME
         self.print_seen = True
         state = self._snapshot(eventtime)
         toolhead = self.printer.lookup_object('toolhead')
-        toolhead.register_lookahead_callback(
-            lambda print_time: self._note_executed(print_time, state))
+        last_move = toolhead.lookahead.get_last()
+        if last_move is None:
+            # All moves are queued: their end is print_time.  Not
+            # register_lookahead_callback(), whose get_last_move_time()
+            # takes an idle toolhead out of its idle state - every 250ms
+            # that keeps wait_moves() (eg the TMC phase check when an
+            # extruder is enabled) waiting forever
+            self._note_executed(toolhead.print_time, state)
+        else:
+            last_move.timing_callbacks.append(
+                lambda print_time: self._note_executed(print_time, state))
         executed = self._executed_state(eventtime)
         if executed is not None:
             z = executed['position'][2]
@@ -248,8 +276,13 @@ class SnapmakerJ1PowerLoss:
         context['state'] = state
         self.resume_gcode.run_gcode_from_command(context)
         relpath = os.path.relpath(path, sdcard_dir)
-        gcode.run_script_from_command("M23 %s\nM26 S%d"
-                                      % (relpath, state['file_position']))
+        self.resuming = True
+        try:
+            gcode.run_script_from_command("M23 %s\nM26 S%d"
+                                          % (relpath, state['file_position']))
+        finally:
+            self.resuming = False
+        self.pending = state
         self.checkpoints = []
         self.last_saved_z = None
         gcode.run_script_from_command("M24")

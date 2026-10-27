@@ -1,0 +1,131 @@
+# KlipperSnapmakerJ1: Technical Manual
+
+KlipperSnapmakerJ1 holds the printer specific parts of the Snapmaker J1
+that stock [Klipper](https://github.com/Klipper3d/klipper),
+[KlipperScreen](https://github.com/KlipperScreen/KlipperScreen) and
+[Moonraker](https://github.com/Arksine/moonraker) do not provide.  Klipper
+and KlipperScreen stay unmodified; this repository is linked into them and
+updated on its own through the Moonraker update manager.
+
+This page is for developers and for installing on your own Klipper host.
+The user manual is [Manual.md](Manual.md); the hardware, the mapping of
+every stock function to Klipper and the open items are in
+[Snapmaker_J1.md](Snapmaker_J1.md).
+
+## Related repositories
+
+| Repository | Content |
+| --- | --- |
+| **KlipperSnapmakerJ1** (this one) | Klipper modules, printer configuration, KlipperScreen add-on and theme, main controller firmware patch |
+| [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Linux image for the J1 display module (Quectel SC20-W), the Klipper host |
+| [Nimrasol/klipper](https://github.com/Nimrasol/klipper/tree/j1), branch `j1` | Klipper fork with the firmware changes (GD32F305, J1 factory bootloader) as commits on Klipper; the same changes as `firmware/klipper-gd32f305-snapmaker.patch`. The printer runs unmodified Klipper |
+
+## Components
+
+* **Main controller firmware** (GD32F305): chip support at 120MHz and the
+  J1 factory bootloader (`firmware/`).  The firmware is built from stock
+  Klipper with a small patch and installed from the display module
+  through the factory bootloader, with the stock update protocol
+  (`scripts/snapmaker_j1_flash.py`).
+* **Klipper host modules** (`klippy/extras/`):
+  * `snapmaker_j1`: hardware revision check, nozzle type detection, bed
+    heater feedback, IDEX mode from the print file header
+  * `snapmaker_j1_probe`: calibration probe on the carriage switches
+    (bed, Z, XY and nozzle offsets)
+  * `snapmaker_j1_filament_sensor`: filament motion sensors of both
+    nozzles
+  * `snapmaker_j1_power_loss`: power loss recovery
+* **Printer configuration and macros** (`config/`): both toolheads with
+  IDEX modes, fans, heaters, TMC2209 drivers, and the Snapmaker/Marlin
+  g-code of the J1 slicer profiles.
+* **KlipperScreen** (`klipperscreen/snapmaker_j1/`):
+  * the J1 calibration menu with all workflows (bed leveling, Z offset,
+    XY offset with and without assist mode, calibration check, vibration
+    compensation, PID, build plate) and the live height indicator
+  * the pictures and animations of the stock display (`images/`)
+  * the `snapmaker-j1` theme after the stock display
+  * the J1 menu: calibration entry, generic calibration panels and the
+    shutdown button hidden, readable device names
+* **Test prints** (`gcodes/`): calibration check, vibration test and the
+  manual XY calibration.
+
+## Installing on a Klipper host
+
+On the Klipper host, with Klipper, Moonraker and KlipperScreen installed:
+
+```
+cd ~
+git clone https://github.com/Nimrasol/KlipperSnapmakerJ1.git
+./KlipperSnapmakerJ1/install.sh
+sudo systemctl restart moonraker klipper KlipperScreen
+```
+
+`install.sh` links the host modules into Klipper, the configuration into
+`~/printer_data/config/snapmaker_j1` (included from `printer.cfg`), the
+add-on, theme and menu into KlipperScreen, the test prints into
+`~/printer_data/gcodes/snapmaker_j1`, and adds the update manager entry
+to `moonraker.conf`.  `--images DIR` adds own calibration pictures, which
+take precedence over the ones of the add-on.
+
+The display module of the J1 becomes the Klipper host with
+[KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os),
+which runs this installation when the image is built.
+
+### Main controller firmware
+
+```
+./KlipperSnapmakerJ1/firmware/build.sh
+```
+
+builds the firmware from the installed Klipper and writes `mc.bin`,
+`update.bin` (stock display USB update), `klipper.bin` and
+`boot-header.bin` (SWD) to `firmware/out`.  Install it with Klipper
+stopped:
+
+```
+~/klippy-env/bin/python ~/KlipperSnapmakerJ1/scripts/snapmaker_j1_flash.py \
+    ~/KlipperSnapmakerJ1/firmware/out/mc.bin
+```
+
+The factory bootloader checks the image and writes only the application
+pages; an interrupted update is completed by running the script again,
+and a stock `mc.bin` returns to the stock firmware.  Rebuild and install
+the firmware when a Klipper update changes the protocol to the main
+controller.
+
+## Updates
+
+Updates of this repository appear in the update panel of KlipperScreen,
+Mainsail and Fluidd (`[update_manager KlipperSnapmakerJ1]`).  Klipper,
+Moonraker and KlipperScreen stay unmodified clones of their own
+repositories and are updated through their own entries, but only up to
+the versions this release is tested with: KlipperSnapmakerJ1 pins them
+in the update manager.  A release with newer tested versions moves the
+pins, so update KlipperSnapmakerJ1 first and then the others.
+
+## Compatibility
+
+This release is tested with ([versions.conf](../versions.conf)):
+
+| Component | Version | Date |
+| --- | --- | --- |
+| Klipper | v0.13.0-816-gee2c6fb6 | 2026-10-21 |
+| Moonraker | v0.11.0-4-gb559b9a | 2026-10-21 |
+| KlipperScreen | v0.4.7-198-g911c75b | 2026-10-18 |
+
+The update manager offers updates only up to these versions; see
+[Compatibility](Snapmaker_J1.md#compatibility) for what depends on each
+version.
+
+## Repository layout
+
+| Path | Content |
+| --- | --- |
+| `config/` | printer configuration and macros |
+| `klippy/extras/` | Klipper host modules |
+| `klipperscreen/snapmaker_j1/` | KlipperScreen add-on, theme, menu and calibration pictures |
+| `gcodes/` | test prints of the calibration menu |
+| `firmware/` | main controller firmware patch and build |
+| `scripts/` | firmware packaging and update tool, version pins of the update manager, asset extraction |
+| `moonraker/` | update manager entry |
+| `docs/` | user manual, technical documentation |

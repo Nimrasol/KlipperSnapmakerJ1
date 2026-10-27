@@ -43,6 +43,8 @@ FILAMENT_SENSOR = "snapmaker_j1_filament_sensor "
 # Display backlight (KlipperSnapmakerJ1-os lets the group video switch it)
 BACKLIGHT_DIR = "/sys/class/backlight"
 BL_POWER_ON, BL_POWER_OFF = "0", "4"
+# Recovery state of an interrupted print
+POWER_LOSS = "snapmaker_j1_power_loss"
 
 
 def init(screen):
@@ -93,8 +95,10 @@ def init(screen):
             state_printing()
 
     def _state_ready(wait=True):
+        screen.snapmaker_case_light.klipper_ready()
         if not screen.snapmaker_calibration_print:
             state_ready(wait)
+            _offer_power_loss_resume(screen)
 
     screen.state_printing = _state_printing
     screen.state_ready = _state_ready
@@ -187,12 +191,21 @@ def init(screen):
         ScreenPanel.add_option = _add_option
 
     # Dialog choices centered below the message (GTK puts them at the
-    # right end)
+    # right end).  KlipperScreen gives two buttons a third of the width
+    # each and lets more fill the row, which centered shrinks them to
+    # their labels: these get an equal share of the width as well
     make_dialog = screen.gtk.Dialog
     if not getattr(make_dialog, "snapmaker_j1", False):
         def _dialog(*args, **kwargs):
             dialog = make_dialog(*args, **kwargs)
-            dialog.get_action_area().set_halign(Gtk.Align.CENTER)
+            area = dialog.get_action_area()
+            area.set_halign(Gtk.Align.CENTER)
+            buttons = area.get_children()
+            for button in buttons:
+                width, height = button.get_size_request()
+                if width < 0:
+                    button.set_size_request(
+                        int(screen.gtk.width / (len(buttons) + 1)), height)
             return dialog
 
         _dialog.snapmaker_j1 = True
@@ -202,6 +215,56 @@ def init(screen):
     datetime_panel.apply_clock(screen)
     screen.snapmaker_case_light = light.CaseLight(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
+
+
+def _offer_power_loss_resume(screen):
+    # As the stock display: after a mains failure (or a failed print) the
+    # interrupted print is offered for resuming once Klipper is ready
+    if getattr(screen, "snapmaker_power_loss_dialog", None) is not None:
+        return
+
+    def got(result, method, params, *args):
+        try:
+            status = result["result"]["status"]
+            state = status[POWER_LOSS]
+            printing = status["print_stats"]["state"]
+        except (KeyError, TypeError):
+            return
+        if (not state.get("pending") or printing in ("printing", "paused")
+                or getattr(screen, "snapmaker_power_loss_dialog", None)):
+            return
+        name = os.path.basename(state.get("file_path") or "")
+        label = Gtk.Label(wrap=True, justify=Gtk.Justification.CENTER)
+        label.set_markup(
+            "%s\n\n<b>%s</b>\n\n%s" % (
+                _("A print was interrupted."),
+                GLib.markup_escape_text(name),
+                _("Resume it? The nozzles heat up and the printer homes"
+                  " before the print continues; check that the print is"
+                  " still on the plate.")))
+        buttons = [
+            {"name": _("Resume"), "response": Gtk.ResponseType.OK,
+             "style": "dialog-info"},
+            {"name": _("Later"), "response": Gtk.ResponseType.CLOSE,
+             "style": "dialog-secondary"},
+            {"name": _("Discard"), "response": Gtk.ResponseType.REJECT,
+             "style": "dialog-error"},
+        ]
+        screen.snapmaker_power_loss_dialog = screen.gtk.Dialog(
+            _("Resume Print"), buttons, label, response)
+
+    def response(dialog, response_id):
+        screen.gtk.remove_dialog(dialog)
+        # Asked once per start of the screen: the state stays stored while
+        # a resumed print heats up, and after "Later"
+        screen.snapmaker_power_loss_dialog = False
+        if response_id == Gtk.ResponseType.OK:
+            screen._ws.api.gcode_script("SNAPMAKER_POWER_LOSS_RESUME")
+        elif response_id == Gtk.ResponseType.REJECT:
+            screen._ws.api.gcode_script("SNAPMAKER_POWER_LOSS_CLEAR")
+
+    screen._ws.api.query_objects(
+        {POWER_LOSS: ["pending", "file_path"], "print_stats": ["state"]}, got)
 
 
 def _set_backlight(value):

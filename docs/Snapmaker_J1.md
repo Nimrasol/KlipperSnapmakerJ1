@@ -458,11 +458,24 @@ On a mains failure it selects the last state whose moves were executed,
 shuts Klipper down (all heaters and heater supplies off, motion stops)
 and writes the state atomically.  `SNAPMAKER_POWER_LOSS_RESUME` runs
 `resume_gcode` (heat, home with Z first - the bed moves away from the
-print -, restore the IDEX mode, prime, move back) and continues the
-file at the stored position.  `SNAPMAKER_POWER_LOSS_STATUS` and
+print -, restore the IDEX mode with its duplication offset, prime, couple
+the carriages again in duplication or mirror mode - priming parks them
+one by one -, move back) and continues the
+file at the stored position.  Where the nozzle stood the oozed filament
+forms a blob: the hot nozzle waits 1mm above the stop position for 10s
+and descends the last millimetre at 0.1mm/s, melting through the blob
+instead of tearing the print off the bed (`soften_height`,
+`soften_dwell`, `soften_speed` of `_SNAPMAKER_POWER_LOSS_RESTORE`).
+`SNAPMAKER_POWER_LOSS_STATUS` and
 `SNAPMAKER_POWER_LOSS_CLEAR` report and discard the state.  The state
 is discarded when a print completes, is cancelled or a new print starts;
-a paused or failed print keeps it.
+a paused or failed print keeps it.  The module looks for a running print
+every second while idle (a print start macro may move the toolhead
+before the file is opened, so the idle_timeout "printing" event alone
+misses it), and syncs the directory after writing or removing the state
+(the J1 root file system commits only every 60s).  When Klipper becomes
+ready with a stored state, the display asks to resume the print, as the
+stock display does ("Resume", "Later", "Discard").
 
 The stock firmware lowers the bed by 5mm after a mains failure.
 Klipper cannot run new moves after an emergency stop, so the nozzle
@@ -745,7 +758,8 @@ from the KlipperScreen settings.  While Klipper is busy (heating,
 homing) the slider keeps the new step with a busy indicator and the
 step is sent until Klipper takes it.  The chosen step is stored as
 `snap_j1_case_light` (save_variables) and set again when Klipper
-starts; the dim settings are stored in
+starts; a light dimmed before a Klipper restart is dimmed again a few
+seconds after Klipper is ready.  The dim settings are stored in
 `~/.config/snapmaker_j1/klipperscreen.json`.
 
 The add-on hides the shutdown button of the action

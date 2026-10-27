@@ -34,6 +34,9 @@ DISPLAY_OPTIONS = ("screen_blanking", "screen_blanking_printing",
 # Seconds between attempts while Klipper does not take the command, and
 # after the last slider movement before it is sent
 RETRY_DELAY = 2
+# Seconds after Klipper is ready before dimming again, once Klipper has
+# set the chosen step (_SNAPMAKER_INIT)
+READY_DIM_DELAY = 5
 SLIDER_DELAY = 300
 
 
@@ -55,6 +58,7 @@ class CaseLight:
         self.sending = False
         self.dimmed = None
         self.dim_timer = None
+        self.idle = False
         self.listener = None
         # Every touch, also the one that ends the screen saver
         self.gesture = Gtk.GestureMultiPress.new(screen)
@@ -126,6 +130,7 @@ class CaseLight:
         if self.dim_timer is not None:
             GLib.source_remove(self.dim_timer)
             self.dim_timer = None
+        self.idle = False
         if self.dimmed is not None:
             before, dimmed = self.dimmed
             self.dimmed = None
@@ -136,8 +141,20 @@ class CaseLight:
         if delay:
             self.dim_timer = GLib.timeout_add_seconds(delay * 60, self._dim)
 
+    def klipper_ready(self):
+        # A Klipper restart sets the chosen step again, a light dimmed
+        # before (or while Klipper was not available) is dimmed again
+        if self.idle:
+            GLib.timeout_add_seconds(READY_DIM_DELAY, self._dim_again)
+
+    def _dim_again(self):
+        if self.idle:
+            self._dim()
+        return False
+
     def _dim(self):
         self.dim_timer = None
+        self.idle = True
         if self.available():
             level = self.level()
             dimmed = settings.get("light_dim_level", DIM_LEVEL_DEFAULT)

@@ -164,7 +164,7 @@ E0 111, E1 011 (1 = high).
 | Board revision detection | ADC check against the configured revision | `snapmaker_j1` |
 | Nozzle type detection | ADC classification, `SNAPMAKER_QUERY_HARDWARE` | `snapmaker_j1` |
 | Nozzle diameter check before a print ("Inconsistent Nozzle Diameter") | `SNAPMAKER_CHECK_NOZZLES` from `SDCARD_PRINT_FILE`, `action:prompt` dialog | `snapmaker_j1` |
-| Missing hotend ("nozzle loss") | `max_temp` shutdown, message names the undetected nozzle | `snapmaker_j1` |
+| Missing hotend ("nozzle loss") | heater blocked until the hotend is back (shutdown while printing) | `snapmaker_j1` |
 | Fans (part, hotend, electronics) | `fan_generic`, `heater_fan`, `temperature_fan` | none |
 | Case light (M355), dimmed after a time without touch | `[output_pin]`, "Light" panel | macros, KlipperScreen add-on |
 | Nozzle contact probing (Z) | probe interface using the active nozzle's switch | `snapmaker_j1_probe` |
@@ -263,10 +263,22 @@ undetected nozzle counts as a mismatch.  The dialog uses Klipper's
 `SDCARD_PRINT_FILE FILENAME=<file> NOZZLE_CHECK=0` prints without the
 check (the calibration prints, as in the stock firmware).
 
-A missing hotend opens its temperature sensor and shuts Klipper down
-(`max_temp`, "ADC out of range"); the shutdown message then starts with
-"Nozzle L/R not detected - check that the hotend is installed and its
-cable is plugged in" (stock: "nozzle loss" exception).
+The hotends are pushed in without a cable; a missing hotend opens its
+temperature sensor, which then reads far above `max_temp`.  As the stock
+firmware ("nozzle loss"), this only blocks the heater of that hotend:
+`snapmaker_j1` moves the upper limit of the hotend sensors from the MCU
+range check to the host (the MCU keeps checking `min_temp`).  A reading
+above `max_temp` for 1s with the identification resistor missing turns
+the heater off and rejects new targets ("Nozzle L not detected. Insert
+the hotend."), and a "Nozzle Missing" dialog (action:prompt) opens until
+the hotend is back; then the heater works again without a restart.  The
+KlipperScreen add-on shows a temperature above `max_temp` as N/A.  With the hotend present, or while printing, a reading above
+`max_temp` shuts Klipper down as before; the shutdown message then starts
+with "Nozzle L/R not detected. Insert the hotend." if the hotend is
+missing.  The KlipperScreen add-on shows a
+shutdown or error as "Printer stopped" with the reason only (without
+Klipper's restart instructions) and a single Restart button
+(`FIRMWARE_RESTART`) next to Menu.
 
 #### [snapmaker_j1_probe]
 

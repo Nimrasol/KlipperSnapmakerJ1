@@ -38,6 +38,15 @@ NOZZLE_TYPES = [
 ]
 NOZZLE_NAMES = ["Nozzle L", "Nozzle R"]
 NOZZLE_TOLERANCE = 0.01
+# A hotend is pushed in without a cable, its temperature sensor reads
+# open (far above max_temp) while it is out.  The MCU range check would
+# shut Klipper down until a FIRMWARE_RESTART; the upper limit is checked
+# here instead, and a missing hotend only blocks its heater (as the stock
+# firmware).  The MCU keeps checking the lower limit.
+TOOL_HEATERS = ['extruder', 'extruder1']
+SENSOR_OPEN_TEMP = 1000.
+SENSOR_CHECK_TIME = 0.250
+SENSOR_OVER_TIME = 1.
 
 # Header lines with the nozzle diameter of a tool: J1 profiles of Luban
 # ("Extruder 0 Nozzle Size:0.4"), older Luban versions
@@ -95,6 +104,13 @@ class SnapmakerJ1:
                         config.get('nozzle_id_pin_t0')),
             AnalogInput(config, 'snapmaker_j1_nozzle_t1',
                         config.get('nozzle_id_pin_t1'))]
+        self.tool_heaters = []
+        self.tool_temps = [0., 0.]
+        self.tool_over_since = [None, None]
+        self.tool_blocked = [False, False]
+        self.nozzle_prompt = False
+        self.printer.register_event_handler('klippy:mcu_identify',
+                                            self._setup_tool_sensors)
         # Heated bed switching feedback
         self.bed_feedback_state = None
         self.bed_check_time = config.getfloat('bed_feedback_time', 2.,
@@ -148,6 +164,8 @@ class SnapmakerJ1:
             self.reactor.register_timer(self._check_bed_feedback,
                                         self.reactor.NOW)
         self.reactor.register_timer(self._check_print_end, self.reactor.NOW)
+        self.reactor.register_timer(self._check_tool_sensors,
+                                    self.reactor.NOW)
     # End of a completed print: Klipper runs no G-code at that point, the
     # stock firmware cleans up (heaters off, full control mode, parking)
     def _check_print_end(self, eventtime):
@@ -201,16 +219,88 @@ class SnapmakerJ1:
         return [NOZZLE_NAMES[i] for i in range(2)
                 if self.nozzle_adcs[i].get_mv() is not None
                 and self._nozzle_info(i)['material'] is None]
+    # Hotend temperature sensors (the heaters exist once the config is read)
+    def _setup_tool_sensors(self):
+        pheaters = self.printer.lookup_object('heaters')
+        for index, name in enumerate(TOOL_HEATERS):
+            heater = pheaters.lookup_heater(name)
+            heater.sensor.setup_minmax(heater.min_temp, SENSOR_OPEN_TEMP)
+            def temperature_callback(read_time, temp, index=index,
+                                     callback=heater.temperature_callback):
+                self.tool_temps[index] = temp
+                callback(read_time, temp)
+            heater.sensor.setup_callback(temperature_callback)
+            def set_temp(degrees, index=index, set_temp=heater.set_temp):
+                if degrees and self._tool_open(index):
+                    raise self.printer.command_error(
+                        "%s not detected. Insert the hotend."
+                        % (NOZZLE_NAMES[index],))
+                set_temp(degrees)
+            heater.set_temp = set_temp
+            self.tool_heaters.append(heater)
+    def _show_nozzle_prompt(self):
+        # A dialog on the display (action:prompt, also in Mainsail and
+        # Fluidd) while a hotend is missing; it closes once all are back
+        missing = [NOZZLE_NAMES[i] for i in range(2) if self.tool_blocked[i]]
+        if not missing:
+            if self.nozzle_prompt:
+                self.nozzle_prompt = False
+                self.gcode.respond_raw("// action:prompt_end")
+            return
+        self.nozzle_prompt = True
+        for line in [
+                "action:prompt_begin Nozzle Missing",
+                "action:prompt_text %s not detected. Insert the hotend, its"
+                " heater stays off until then." % (" and ".join(missing),),
+                "action:prompt_footer_button Close"
+                "|RESPOND TYPE=command MSG=action:prompt_end",
+                "action:prompt_show"]:
+            self.gcode.respond_raw("// " + line)
+    def _tool_open(self, index):
+        return (self.tool_blocked[index] or self.tool_temps[index]
+                > self.tool_heaters[index].max_temp)
+    def _check_tool_sensors(self, eventtime):
+        for index, heater in enumerate(self.tool_heaters):
+            name = NOZZLE_NAMES[index]
+            if self.tool_temps[index] <= heater.max_temp:
+                self.tool_over_since[index] = None
+                if (self.tool_blocked[index]
+                    and self._nozzle_info(index)['material'] is not None):
+                    self.tool_blocked[index] = False
+                    self.gcode.respond_info("%s detected" % (name,))
+                    self._show_nozzle_prompt()
+                continue
+            if self.tool_over_since[index] is None:
+                self.tool_over_since[index] = eventtime
+            if eventtime - self.tool_over_since[index] < SENSOR_OVER_TIME:
+                continue
+            missing = name in self._missing_nozzles()
+            state = self.printer.lookup_object('print_stats').get_status(
+                eventtime)['state']
+            if missing and state != 'printing':
+                if not self.tool_blocked[index]:
+                    self.tool_blocked[index] = True
+                    heater.set_temp(0.)
+                    self.gcode.respond_info(
+                        "%s not detected. Insert the hotend." % (name,))
+                    self._show_nozzle_prompt()
+                continue
+            self.printer.invoke_shutdown(
+                "Heater %s temperature %.1f above max_temp %.1f"
+                % (heater.get_name(), self.tool_temps[index],
+                   heater.max_temp))
+            return self.reactor.NEVER
+        return eventtime + SENSOR_CHECK_TIME
     def _handle_shutdown(self):
-        # A missing hotend also opens its temperature sensor, which shuts
-        # down Klipper with a generic "ADC out of range" message
+        # A hotend removed while printing also opens its temperature sensor,
+        # which shuts down Klipper with a generic message
         missing = self._missing_nozzles()
         if not missing:
             return
         msg, category = self.printer.get_state_message()
         self.printer.update_error_msg(msg, (
-            "%s not detected - check that the hotend is installed and its"
-            " cable is plugged in\n%s" % (" and ".join(missing), msg)))
+            "%s not detected. Insert the hotend.\n%s"
+            % (" and ".join(missing), msg)))
     # Heated bed feedback
     def _bed_feedback_handler(self, eventtime, state):
         self.bed_feedback_state = state

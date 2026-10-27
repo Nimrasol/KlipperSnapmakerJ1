@@ -12,6 +12,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
+from ks_includes.KlippyGtk import find_widget
 from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
@@ -45,6 +46,11 @@ BACKLIGHT_DIR = "/sys/class/backlight"
 BL_POWER_ON, BL_POWER_OFF = "0", "4"
 # Recovery state of an interrupted print
 POWER_LOSS = "snapmaker_j1_power_loss"
+# Klipper's own lines around a shutdown reason, not shown on the screen
+SHUTDOWN_LINES = ("MCU shutdown", "Printer is shutdown",
+                  "Error configuring printer")
+STOPPED_STATES = ("shutdown", "error")
+SHUTDOWN_HINT = "Once the underlying issue is corrected"
 
 
 def init(screen):
@@ -125,6 +131,20 @@ def init(screen):
 
     screen.state_paused = _state_paused
 
+    # A shutdown or error shows its reason and one restart (a
+    # FIRMWARE_RESTART, which also reloads the config) instead of
+    # Klipper's instructions
+    def _stopped(state_handler):
+        def _state():
+            state_handler()
+            panel = screen.panels.get("splash_screen")
+            if panel is not None:
+                _shutdown_page(screen, panel)
+        return _state
+
+    screen.state_shutdown = _stopped(screen.state_shutdown)
+    screen.state_error = _stopped(screen.state_error)
+
     # The J1 is switched off with its power switch and loses no data when
     # the power is cut (power loss recovery); the shutdown button of the
     # action bar is not needed.  The emergency stop still shows while
@@ -155,6 +175,36 @@ def init(screen):
         return process_update(action, data)
 
     base_panel.process_update = _process_update
+
+    # A pulled hotend leaves its temperature sensor open (several hundred
+    # degrees, above max_temp): the temperature shows as N/A
+    update_temp = ScreenPanel.update_temp
+    if not getattr(update_temp, "snapmaker_j1", False):
+        def _update_temp(self, dev, temp, target, power, *args, **kwargs):
+            update_temp(self, dev, temp, target, power, *args, **kwargs)
+            if not _temp_invalid(self._printer, dev, temp):
+                return
+            widget = self.labels.get(dev)
+            if widget is None and dev in self.devices:
+                widget = self.devices[dev]["temp"]
+            if widget is not None:
+                find_widget(widget, Gtk.Label).set_text(_("N/A"))
+
+        _update_temp.snapmaker_j1 = True
+        ScreenPanel.update_temp = _update_temp
+
+    process_memory = base_panel.process_update
+
+    def _process_titlebar(action, data):
+        result = process_memory(action, data)
+        if action == "notify_status_update" and screen.printer is not None:
+            for dev, label in base_panel.titlebar_labels.items():
+                if _temp_invalid(screen.printer, dev,
+                                 screen.printer.get_stat(dev, "temperature")):
+                    label.set_label(_("N/A"))
+        return result
+
+    base_panel.process_update = _process_titlebar
 
     # Device names as on the stock display
     prettify = ScreenPanel.prettify
@@ -215,6 +265,54 @@ def init(screen):
     datetime_panel.apply_clock(screen)
     screen.snapmaker_case_light = light.CaseLight(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
+
+
+def _temp_invalid(printer, dev, temp):
+    if not temp or printer is None:
+        return False
+    section = printer.get_config_section(dev) or {}
+    try:
+        return temp > float(section.get("max_temp"))
+    except (TypeError, ValueError):
+        return False
+
+
+def _shutdown_page(screen, panel):
+    if not getattr(panel, "snapmaker_shutdown", False):
+        panel.snapmaker_shutdown = True
+        update_text = panel.update_text
+        show_restart_buttons = panel.show_restart_buttons
+        restart = screen.gtk.Button("refresh", _("Restart"), "color1")
+        restart.connect("clicked", panel.firmware_restart)
+
+        def _update_text(text):
+            panel.labels["text"].set_use_markup(False)
+            update_text(text)
+
+        def _show_restart_buttons():
+            if (screen.printer is None
+                    or screen.printer.state not in STOPPED_STATES):
+                show_restart_buttons()
+                return
+            panel.clear_action_bar()
+            panel.labels["actions"].add(restart)
+            panel.labels["actions"].add(panel.labels["menu"])
+            panel.labels["actions"].show_all()
+
+        panel.update_text = _update_text
+        panel.show_restart_buttons = _show_restart_buttons
+    msg = screen.printer.get_stat("webhooks", "state_message") or ""
+    lines = []
+    for line in msg.strip().splitlines():
+        if line.startswith(SHUTDOWN_HINT):
+            break
+        if line.strip() not in SHUTDOWN_LINES:
+            lines.append(line)
+    reason = "\n".join(lines).strip() or msg.strip()
+    panel.labels["text"].set_markup("<big><b>%s</b></big>\n\n%s\n\n%s" % (
+        _("Printer stopped"), GLib.markup_escape_text(reason),
+        _("Tap Restart once the cause is fixed.")))
+    panel.show_restart_buttons()
 
 
 def _offer_power_loss_resume(screen):
@@ -508,8 +606,17 @@ def _patch_extrude(panel_class):
             % (1 if extruder == "extruder1" else 0))
         return extrude(self, widget, direction)
 
+    # Its own temperature labels: N/A as in the other panels
+    update_temp = panel_class.update_temp
+
+    def _update_temp(self, extruder, temp, target, power):
+        update_temp(self, extruder, temp, target, power)
+        if _temp_invalid(self._printer, extruder, temp):
+            find_widget(self.labels[extruder], Gtk.Label).set_text(_("N/A"))
+
     _extrude.snapmaker_j1 = True
     panel_class.extrude = _extrude
+    panel_class.update_temp = _update_temp
 
 
 def _patch_settings_options(panel_class):

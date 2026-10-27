@@ -10,6 +10,15 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
+## v1.0.1 (2026-10-27)
+
+- **Documentation:** the user manual starts with the first start: connect
+  the WLAN and calibrate before the first print.  The clock only runs
+  correctly with the WLAN connected.
+- With [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os):
+  the update manager checks for updates as soon as the WLAN is connected,
+  instead of showing no versions after a start without network.
+
 ## v1.0.0 (2026-10-27)
 
 First release tested on the printer: KlipperSnapmakerJ1 runs the J1 with

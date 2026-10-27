@@ -15,6 +15,7 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 
 ## Contents
 
+- [First start: connect the WLAN and calibrate](#first-start-connect-the-wlan-and-calibrate)
 - [The screen at a glance](#the-screen-at-a-glance)
 - [Printing](#printing)
 - [Temperature](#temperature)
@@ -33,6 +34,28 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 - [Web interface](#web-interface)
 - [Slicer](#slicer)
 - [What is implemented](#what-is-implemented)
+
+## First start: connect the WLAN and calibrate
+
+> **Important.**  Do both steps on the first start, before the first
+> print.
+
+1. **Connect the WLAN** under **More → Network**: choose the network and
+   enter its password.  The printer needs the network for
+   - the **clock**: the display module has no battery for its clock and
+     takes the time from the network (see [Clock](#network-name-and-clock));
+   - the **updates** of KlipperSnapmakerJ1, Klipper, Moonraker and
+     KlipperScreen; the printer checks for updates as soon as the WLAN is
+     connected;
+   - the [web interface](#web-interface) and sending files from the
+     slicer.
+2. **Calibrate** in the [Calibration](#calibration) menu, in this order:
+   Heated Bed Leveling, Z Offset Calibration, XY Offset Calibration and
+   Offset Calibration Check.  Until then the printer works with the
+   values of an uncalibrated J1: the height of the nozzles above the bed
+   and the offset between the two nozzles are not right, so the first
+   layer fails and a nozzle may touch the bed.  Run Vibration
+   Compensation once as well.
 
 ## The screen at a glance
 
@@ -546,8 +569,11 @@ Set the bed standby temperature and the delay here; they are kept.
   interface is reached at `http://<name>.local`.  Give each printer its
   own name when you have several.
 - **Clock:** sets the time zone and switches the clock in the title bar
-  on or off.  The time comes from the network, because the display
-  module has no battery for its clock.
+  on or off.  **The clock only runs correctly with the WLAN connected:**
+  the display module has no battery for its clock and takes the time
+  from the network.  Without a network the printer starts with the last
+  time it knew, so the clock, the print history and the log files show
+  a wrong time.
 
 ### Other entries
 

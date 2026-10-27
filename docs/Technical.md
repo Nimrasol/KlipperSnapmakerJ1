@@ -103,6 +103,16 @@ the versions this release is tested with: KlipperSnapmakerJ1 pins them
 in the update manager.  A release with newer tested versions moves the
 pins, so update KlipperSnapmakerJ1 first and then the others.
 
+## Versions
+
+Releases are git tags `vX.Y.Z` following
+[Semantic Versioning](https://semver.org); the update manager shows the
+version of the installed release.  [CHANGELOG.md](../CHANGELOG.md) lists
+the changes of each release and what a version step means.  A release
+with newer tested versions of Klipper, Moonraker or KlipperScreen moves
+`versions.conf` and the pins of the update manager
+(`scripts/snapmaker_j1_versions.py`).
+
 ## Compatibility
 
 This release is tested with ([versions.conf](../versions.conf)):

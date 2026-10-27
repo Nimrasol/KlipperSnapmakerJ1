@@ -546,7 +546,7 @@ KlipperScreen installed:
    ```
    cd ~
    git clone https://github.com/Nimrasol/KlipperSnapmakerJ1.git
-   ./KlipperSnapmakerJ1/install.sh --apk base.apk
+   ./KlipperSnapmakerJ1/install.sh
    ```
    This links the host modules into `~/klipper/klippy/extras`, the
    configuration into `~/printer_data/config/snapmaker_j1` (included
@@ -797,21 +797,22 @@ Mainsail and Fluidd.
 
 Installation (on the display module):
 ```
-./install.sh --apk base.apk --images ~/Animations
+./install.sh --images ~/Animations
 ```
 This links `klipperscreen/snapmaker_j1` as a KlipperScreen
 add-on, enables add-ons, adds the "Calibration" main menu entry and
-copies the pictures to `~/printer_data/config/snapmaker_j1/images` and
-the calibration check and vibration test prints to
-`~/printer_data/gcodes/snapmaker_j1/`, where it also links the manual
-XY test print of this repository (`gcodes/`).  Those pictures and test
-prints belong to Snapmaker and are not part of this repository (the
-example pictures of the manual XY calibration are, in
-`klipperscreen/snapmaker_j1/images`);
-`scripts/snapmaker_j1_extract_assets.py` takes them from
-the display application of the user's own printer
-(`/data/app/com.snapmaker.j1-*/base.apk` on the userdata partition).
-Pictures given with `--images` take precedence.  The stock firmware
+links the test prints of this repository (`gcodes/`: calibration check,
+vibration test, manual XY calibration) into
+`~/printer_data/gcodes/snapmaker_j1/`.  The pictures and animations of
+the stock display application come with the add-on
+(`klipperscreen/snapmaker_j1/images`, next to the example pictures of
+the manual XY calibration).  `scripts/snapmaker_j1_extract_assets.py`
+took the pictures and the calibration check and vibration test prints
+from the display application (`/data/app/com.snapmaker.j1-*/base.apk`
+on the userdata partition) and renews them from another version.
+Pictures given with `--images` are copied to
+`~/printer_data/config/snapmaker_j1/images` and take precedence over
+the add-on's.  The stock firmware
 clamps moves to its travel limits, and the calibration check parks the
 carriages just beyond them (X-14, X340) and wipes at Y-0.5; Klipper
 rejects such moves, so the script clamps travel moves (without

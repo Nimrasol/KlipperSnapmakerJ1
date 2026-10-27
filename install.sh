@@ -5,10 +5,9 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 #
-# Usage: install.sh [--apk base.apk] [--images DIR]
-#   --apk     J1 display application to take pictures and test prints from
+# Usage: install.sh [--images DIR]
 #   --images  directory with calibration pictures (eg own animations);
-#             pictures found there take precedence over the application's
+#             pictures found there take precedence over the repository's
 #
 # Everything is linked, not copied, so an update of this repository (git
 # pull, or the Moonraker update manager) takes effect after a restart of
@@ -26,12 +25,10 @@ IMAGE_DIR="$J1_CONFIG_DIR/images"
 GCODE_DIR="$DATA_DIR/gcodes/snapmaker_j1"
 KS_CONF="$CONFIG_DIR/KlipperScreen.conf"
 MOONRAKER_CONF="$CONFIG_DIR/moonraker.conf"
-APK=""
 IMAGES=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --apk) APK="$2"; shift 2 ;;
         --images) IMAGES="$2"; shift 2 ;;
         *) echo "Unknown option $1"; exit 1 ;;
     esac
@@ -135,16 +132,14 @@ python3 "$THEME_SRC/make_icons.py" "$KS_DIR/styles/material-dark/images" \
     "$THEME_DIR/images"
 exclude "$KS_DIR" "styles/snapmaker-j1"
 
-# Pictures and test prints of the calibration menu
+# Pictures and test prints of the calibration menu; the pictures come
+# with the add-on (klipperscreen/snapmaker_j1/images), own ones in
+# IMAGE_DIR replace them
 mkdir -p "$IMAGE_DIR" "$GCODE_DIR"
 if [ -n "$IMAGES" ]; then
     cp "$IMAGES"/*.gif "$IMAGES"/*.png "$IMAGE_DIR"/ 2>/dev/null || true
 fi
-if [ -n "$APK" ]; then
-    python3 "$REPO_DIR/scripts/snapmaker_j1_extract_assets.py" "$APK" \
-        --images "$IMAGE_DIR" --gcodes "$GCODE_DIR" --skip-existing
-fi
-# Test prints of this repository (manual XY calibration)
+# Test prints: calibration check, vibration test, manual XY calibration
 for gcode in "$REPO_DIR"/gcodes/*.gcode; do
     ln -sfn "$gcode" "$GCODE_DIR/$(basename "$gcode")"
 done

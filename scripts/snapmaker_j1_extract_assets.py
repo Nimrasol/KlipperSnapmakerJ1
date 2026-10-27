@@ -7,9 +7,11 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import sys, os, re, zipfile, argparse
 
-# The assets belong to Snapmaker and are not distributed with Klipper;
-# this tool copies them from the display application of the user's own
-# printer (/data/app/com.snapmaker.j1-*/base.apk).
+# The pictures (klipperscreen/snapmaker_j1/images) and test prints
+# (gcodes/) of this repository were taken with this tool; it renews them
+# from another version of the display application
+# (/data/app/com.snapmaker.j1-*/base.apk), eg
+#   snapmaker_j1_extract_assets.py base.apk --gcodes gcodes #       --images klipperscreen/snapmaker_j1/images
 IMAGES = [
     'gif_calibration_j1_heated_bed_leveing_auxiliary_content',
     'gif_calibration_j1_xy_offset_auxiliary_calibration_content',

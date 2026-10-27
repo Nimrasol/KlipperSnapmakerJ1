@@ -127,11 +127,14 @@ starts prints directly.
    start the update on the stock touch screen.
 3. **Wait** until the printer restarts.  The Klipper main menu appears on
    the touch screen.
-4. **Connect to your network** under **More → Network**.  The printer is
-   then reachable at `http://snapmaker-j1.local`.
-5. **Calibrate** in the **Calibration** menu, in the order of the
-   [user manual](docs/Manual.md#calibration): bed leveling, Z offset,
-   XY offset, offset check.
+4. **Connect to your network** under **More → Network** (required).  The
+   clock, the updates and the web interface need it; the printer is then
+   reachable at `http://snapmaker-j1.local`.
+5. **Calibrate** in the **Calibration** menu before the first print
+   (required), in the order of the
+   [user manual](docs/Manual.md#first-start-connect-the-wlan-and-calibrate):
+   bed leveling, Z offset, XY offset, offset check.  Without it the
+   nozzle height and the offset between the nozzles are not right.
 
 ### Back to the stock firmware
 
@@ -140,7 +143,7 @@ again the same way, from a USB stick.
 
 ## Status
 
-**Version 1.0.0** ([changelog](CHANGELOG.md)).  Runs on the J1 (board revision 2), with Klipper, Moonraker and
+**Version 1.0.1** ([changelog](CHANGELOG.md)).  Runs on the J1 (board revision 2), with Klipper, Moonraker and
 KlipperScreen on the display module: printing, the calibration menu and
 the filament handling on the touch screen, and Mainsail in the browser.
 The open items are listed in the

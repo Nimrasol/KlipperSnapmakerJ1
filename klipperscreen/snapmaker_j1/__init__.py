@@ -548,7 +548,8 @@ def _patch_job_status(panel_class):
 def _patch_move_options(panel_class):
     # The axis inversion switches of the move panel only mirror buttons and
     # graphs of KlipperScreen; the J1 menu already shows the directions of
-    # the printer (the bed moves in Z), so the switches would only confuse
+    # the printer (the bed moves in Z, invert_z is set in
+    # snapmaker_j1.conf), so the switches would only confuse
     add_option = panel_class.add_option
     if getattr(add_option, "snapmaker_j1", False):
         return

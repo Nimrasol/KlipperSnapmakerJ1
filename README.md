@@ -129,6 +129,17 @@ The installation package holds an update package for the Snapmaker
 system (`J1_V*.bin`: the stock main controller firmware and the
 installer) and the Klipper system in the folder `install`.
 
+**Video:** [Install Klipper on a Snapmaker J1 / J1s](https://www.youtube.com/watch?v=U0IwCsgZC0M)
+
+[![Video: Install Klipper on a Snapmaker J1 / J1s](https://img.youtube.com/vi/U0IwCsgZC0M/hqdefault.jpg)](https://www.youtube.com/watch?v=U0IwCsgZC0M)
+
+> [!CAUTION]
+> **This takes a while: about 7 minutes.  Do not pull the USB
+> stick and do not switch the printer off until the Klipper main menu
+> appears.**  The printer restarts by itself on the way and the screen
+> stays dark for a while; that is normal.  A stick pulled in the middle can
+> leave the printer unable to start.
+
 1. **Copy** the contents of the installation package to a USB stick
    (FAT32): `J1_V*.bin` and the folder `install`.
 2. **Insert the stick** into the USB port on the front of the J1 and
@@ -174,6 +185,16 @@ has been changed.
 The stock firmware package holds the official Snapmaker update package
 (`J1_V*.bin`) and the Snapmaker system of the display module in the
 folder `stock-restore`.
+
+**Video:** [Restore Snapmaker J1 Stock Firmware from Klipper](https://www.youtube.com/watch?v=L98PkPFao04)
+
+[![Video: Restore Snapmaker J1 Stock Firmware from Klipper](https://img.youtube.com/vi/L98PkPFao04/hqdefault.jpg)](https://www.youtube.com/watch?v=L98PkPFao04)
+
+> [!CAUTION]
+> **This takes a while: about 3 minutes.  Do not pull the USB
+> stick and do not switch the printer off until the Snapmaker setup
+> appears.**  The printer restarts by itself on the way; that is normal.
+> A stick pulled in the middle can leave the printer unable to start.
 
 1. **Copy** the contents of the stock firmware package to a USB stick
    (FAT32) and insert it into the USB port on the front of the J1.

@@ -7,6 +7,10 @@
 **Your Snapmaker J1 with Klipper — on its own touch screen, with the J1
 calibrations you know.**
 
+<p align="center">
+<a href="https://buymeacoffee.com/3pjgRWxRFB"><img src="https://img.shields.io/badge/Buy_me_a_coffee-support_this_project-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+</p>
+
 KlipperSnapmakerJ1 replaces the stock firmware of the Snapmaker J1 IDEX
 printer with [Klipper](https://github.com/Klipper3d/klipper).  The display
 of the printer keeps working as its touch screen: it runs Klipper,
@@ -208,6 +212,20 @@ The open items are listed in the
 | [Snapmaker_J1.md](docs/Snapmaker_J1.md) | hardware, how each stock function is implemented in Klipper, open items |
 | [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | the Linux system of the display module, which runs Klipper, Moonraker, KlipperScreen and Mainsail on the printer |
 | [Nimrasol/klipper](https://github.com/Nimrasol/klipper/tree/j1), branch `j1` | the main controller support (GD32F305, J1 factory bootloader) as Klipper commits, for reference and review |
+
+## Special thanks
+
+To **eazrael** ([wiki.evilazrael.de](https://wiki.evilazrael.de/)), who
+brought Linux to the display module of the J1: his lk2nd port, the device
+tree and the kernel configuration of the display are the base of the
+display system, and his
+[write-up](https://wiki.evilazrael.de/snapmaker-j1-klipper-installation)
+showed that Klipper on the J1 can work.
+
+## Support
+
+If KlipperSnapmakerJ1 is useful to you, you can
+[buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).
 
 ## License
 

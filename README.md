@@ -156,6 +156,15 @@ without restarting the printer, tap **Back to Snapmaker**: the Snapmaker
 app returns.  Until the printer restarts, nothing of the Snapmaker system
 has been changed.
 
+> [!WARNING]
+> **Calibrate the printer right after the installation, before the first
+> print.**  Klipper starts with the values of an uncalibrated J1: the
+> nozzle height above the bed and the offset between the two nozzles are
+> not right, the first layer fails and a nozzle can crash into the bed.
+> In the **Calibration** menu run the assisted workflows in this order:
+> **Heated Bed Leveling, Z Offset Calibration, XY Offset Calibration,
+> Offset Calibration Check**, then **Vibration Compensation** once.
+
 ### Klipper → stock firmware
 
 The stock firmware package holds the official Snapmaker update package

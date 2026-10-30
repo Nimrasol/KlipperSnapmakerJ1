@@ -197,7 +197,7 @@ screens.
 
 ## Status
 
-**Version 1.0.1** ([changelog](CHANGELOG.md)).  Runs on the J1 (board revision 2), with Klipper, Moonraker and
+**Version 1.1.0** ([changelog](CHANGELOG.md)).  Runs on the J1 (board revision 2), with Klipper, Moonraker and
 KlipperScreen on the display module: printing, the calibration menu and
 the filament handling on the touch screen, and Mainsail in the browser.
 The open items are listed in the

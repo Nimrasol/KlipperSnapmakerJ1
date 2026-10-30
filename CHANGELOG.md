@@ -10,8 +10,12 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
-## Unreleased
+## v1.1.0 (2026-10-30)
 
+- **Installation from a USB stick** on the Snapmaker touch screen, with
+  [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os):
+  the installation package installs the display system and, on the
+  first start, the Klipper firmware of the main controller.
 - **Back to the stock firmware** from the touch screen: More → System,
   at the end of the page, **Stock Firmware** installs the official
   Snapmaker update package and the Snapmaker system from a USB stick
@@ -19,9 +23,11 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
 - **Menus:** the main menu in the order of a print (Print, Temperature,
   Extrude, Move, Calibration, More); More in rows for printing,
   settings and maintenance; WLAN and Network Name in one Network menu.
+- **Move:** Z- at the top, Z+ below it.
 - **Documentation:** both ways, stock firmware → Klipper and Klipper →
-  stock firmware, in the installation; new pictures of the changed
-  screens.
+  stock firmware, in the installation, with download buttons and a
+  warning to calibrate before the first print; new pictures of the
+  changed screens.
 
 ## v1.0.1 (2026-10-27)
 

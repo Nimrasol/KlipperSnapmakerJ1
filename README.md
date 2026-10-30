@@ -115,31 +115,75 @@ starts prints directly.
 
 ## Installation
 
-> **In preparation.** The steps below describe the planned installation
-> from a USB stick.  Until the package is released, the installation
-> needs the EDL mode of the display module and a Linux computer, see the
-> [installation of KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/blob/main/docs/INSTALL.md).
+> **In preparation.** Both ways below run from a USB stick, without
+> opening the printer, and are tested on one J1.  Until the packages are
+> released, they are built with
+> [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os);
+> the installation in the EDL mode of the display module is described
+> in its [installation guide](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/blob/main/docs/INSTALL.md).
 
-1. **Download** the installation package from the
-   [releases page](https://github.com/Nimrasol/KlipperSnapmakerJ1/releases/latest)
-   and copy it to a USB stick (FAT32).
+### Stock firmware → Klipper
+
+The installation package holds an update package for the Snapmaker
+system (`J1_V*.bin`: the stock main controller firmware and the
+installer) and the Klipper system in the folder `install`.
+
+1. **Copy** the contents of the installation package to a USB stick
+   (FAT32): `J1_V*.bin` and the folder `install`.
 2. **Insert the stick** into the USB port on the front of the J1 and
-   start the update on the stock touch screen.
-3. **Wait** until the printer restarts.  The Klipper main menu appears on
-   the touch screen.
-4. **Connect to your network** under **More → Network** (required).  The
-   clock, the updates and the web interface need it; the printer is then
-   reachable at `http://snapmaker-j1.local`.
+   start the firmware update from the USB stick on the Snapmaker touch
+   screen; confirm it.
+3. **Wait**, leave the stick plugged in and do not switch the printer
+   off.  The printer runs through these screens by itself:
+   - the Snapmaker update up to 99 %;
+   - **Klipper installation** for a moment, a white screen, then the
+     screen goes dark for up to a minute while the boot partitions are
+     written;
+   - the Snapmaker logo, then white text: the maintenance system checks
+     the files on the stick and writes the Klipper system (a few
+     minutes);
+   - the first start of Klipper installs the Klipper firmware on the
+     main controller (about a minute), then the Klipper main menu
+     appears.
+4. **Connect to your network** under **More → Network → WLAN**
+   (required).  The clock, the updates and the web interface need it;
+   the printer is then reachable at `http://snapmaker-j1.local`.
 5. **Calibrate** in the **Calibration** menu before the first print
    (required), in the order of the
    [user manual](docs/Manual.md#first-start-connect-the-wlan-and-calibrate):
    bed leveling, Z offset, XY offset, offset check.  Without it the
    nozzle height and the offset between the nozzles are not right.
 
-### Back to the stock firmware
+If the screen **Klipper installation** reports a failure, or stays
+without restarting the printer, tap **Back to Snapmaker**: the Snapmaker
+app returns.  Until the printer restarts, nothing of the Snapmaker system
+has been changed.
 
-*In preparation:* the stock firmware package installs the stock system
-again the same way, from a USB stick.
+### Klipper → stock firmware
+
+The stock firmware package holds the official Snapmaker update package
+(`J1_V*.bin`) and the Snapmaker system of the display module in the
+folder `stock-restore`.
+
+1. **Copy** the contents of the stock firmware package to a USB stick
+   (FAT32) and insert it into the USB port on the front of the J1.
+2. On the touch screen open **More → System**, scroll to the end and tap
+   **Stock Firmware**.  The page shows the package and the Snapmaker
+   system it found on the stick.
+3. Tap **Restore Stock Firmware** and confirm (not possible while
+   printing).  Leave the stick plugged in and do not switch the printer
+   off:
+   - the main controller gets the Snapmaker firmware (1 to 3 minutes);
+   - the printer restarts into the maintenance system, which checks the
+     files and writes the Snapmaker system (a few minutes);
+   - the printer starts the Snapmaker system.
+4. The **Snapmaker setup** starts as on a new printer: language, WLAN
+   and the calibrations.  Finish it before printing.
+
+Klipper, its settings, the calibrations and the files on the printer are
+deleted; the way to Klipper stays open with the installation package.
+See the [user manual](docs/Manual.md#back-to-the-stock-firmware) for the
+screens.
 
 ## Status
 

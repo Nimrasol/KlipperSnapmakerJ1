@@ -777,10 +777,15 @@ seconds after Klipper is ready.  The dim settings are stored in
 The add-on hides the shutdown button of the action
 bar (the J1 is switched off with its power switch; the emergency stop
 still shows while printing) and names the nozzles "Left Nozzle" and
-"Right Nozzle".  "More → Network Name" sets the host name the printer
-announces as `<name>.local` (NetworkManager and avahi on the D-Bus,
-allowed for the group `netdev`), so several printers in one network
-get their own addresses.  "More → Clock" sets the time zone (region,
+"Right Nozzle".  It orders the main menu and More (`MENU_ORDER`;
+KlipperScreen itself shows the entries in the order of its config
+sections) and joins the WLAN panel and the network name in a Network
+submenu.  "More → Network → Network Name" sets the host name the
+printer announces as `<name>.local` (NetworkManager and avahi on the
+D-Bus, allowed for the group `netdev`), so several printers in one
+network get their own addresses.  The way back to the stock firmware
+is a small button at the end of "More → System"
+(`scripts/snapmaker_j1_stock.py`).  "More → Clock" sets the time zone (region,
 then city; systemd-timedated, which KlipperSnapmakerJ1-os allows for the
 group `netdev`), shows whether the time is synchronized and switches the
 clock in the title bar on or off (stored in

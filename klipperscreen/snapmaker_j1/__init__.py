@@ -17,7 +17,7 @@ from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
 from . import (calibration, chooser, datetime_panel, filament, hostname,
-               light, pause, style)
+               light, pause, stock, style)
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
@@ -27,6 +27,19 @@ HOSTNAME_PANEL = "snapmaker_hostname"
 DATETIME_PANEL = "snapmaker_datetime"
 PAUSE_PANEL = "snapmaker_pause"
 LIGHT_PANEL = "snapmaker_light"
+STOCK_PANEL = "snapmaker_stock"
+# Order of the menus (KlipperScreen shows them in the order of the config
+# sections, its defaults first); entries not named here follow
+MENU_ORDER = {
+    # The print first, then preparing it, the setup and More last
+    ("__main", ""): ("print", "temperature", "extrude", "move",
+                     "snapmaker_calibration", "more"),
+    # Printing, settings of the printer, tools and maintenance
+    ("__main", "more"): ("fine_tune", "limits", "fan", "snapmaker_pause",
+                         "snapmaker_light", "snapmaker_datetime",
+                         "snapmaker_network", "settings",
+                         "macros", "console", "updater", "system"),
+}
 THEME = "snapmaker-j1"
 # Klipper object names that KlipperScreen would show as "Extruder" and
 # "Extruder1"; the other devices are named in the printer config
@@ -70,6 +83,8 @@ def init(screen):
             return pause
         if panel == LIGHT_PANEL:
             return light
+        if panel == STOCK_PANEL:
+            return stock
         module = load_panel(panel)
         if panel == "job_status":
             _patch_progress_ring(screen, module.Panel)
@@ -83,11 +98,30 @@ def init(screen):
             _patch_device_label(module.Panel, "add_pin")
         elif panel == "settings":
             _patch_settings_options(module.Panel)
+        elif panel == "system":
+            _patch_system(screen, module.Panel)
         elif panel == "extrude":
             _patch_extrude(module.Panel)
         return module
 
     screen._load_panel = _load_panel
+
+    get_menu_items = screen._config.get_menu_items
+
+    def _get_menu_items(menu="__main", subsection=""):
+        items = get_menu_items(menu, subsection)
+        order = MENU_ORDER.get((menu, subsection))
+        if order is None:
+            return items
+
+        def rank(item):
+            # The keys of a submenu start with its path ("more fan")
+            key = next(iter(item)).split()[-1]
+            return order.index(key) if key in order else len(order)
+
+        return sorted(items, key=rank)
+
+    screen._config.get_menu_items = _get_menu_items
 
     # The calibration test prints run inside the calibration menu, so the
     # automatic switch to the job status (and back to the main menu when
@@ -632,6 +666,28 @@ def _patch_settings_options(panel_class):
 
     _add_option.snapmaker_j1 = True
     panel_class.add_option = _add_option
+
+
+def _patch_system(screen, panel_class):
+    # Back to the stock firmware is a fallback: a small button at the end
+    # of the system information, below everything else
+    create_layout = panel_class.create_layout
+    if getattr(create_layout, "snapmaker_j1", False):
+        return
+
+    def _create_layout(self):
+        create_layout(self)
+        button = self._gtk.Button("warning", _("Stock Firmware"), None,
+                                  self.bts, Gtk.PositionType.LEFT, 1)
+        button.set_halign(Gtk.Align.START)
+        button.set_vexpand(False)
+        button.connect("clicked", lambda widget: screen.show_panel(
+            STOCK_PANEL, _("Stock Firmware")))
+        self.grid.attach(button, 0, self.current_row, 2, 1)
+        self.current_row += 1
+
+    _create_layout.snapmaker_j1 = True
+    panel_class.create_layout = _create_layout
 
 
 def _patch_device_label(panel_class, method):

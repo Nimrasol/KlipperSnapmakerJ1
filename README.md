@@ -104,23 +104,20 @@ starts prints directly.
 
 ## Download
 
-> **In preparation.** The installation package for the USB stick is not
-> released yet.  It will be published on the
-> [releases page](https://github.com/Nimrasol/KlipperSnapmakerJ1/releases/latest).
+[![Download: Klipper installation](https://img.shields.io/badge/Download-Klipper_installation-ff8a00?style=for-the-badge&logo=github)](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/latest/download/KlipperSnapmakerJ1-install.zip)
+&nbsp;
+[![Download: Stock firmware](https://img.shields.io/badge/Download-Stock_firmware-555555?style=for-the-badge&logo=github)](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/latest/download/J1-Stock-Firmware.zip)
 
-| File | Content |
+| File | For |
 | --- | --- |
-| *coming soon* | installation package for the USB stick: display system and main controller firmware |
-| *coming soon* | stock firmware package, to return to the stock firmware |
+| `KlipperSnapmakerJ1-install.zip` | stock firmware → Klipper: display system and main controller firmware |
+| `J1-Stock-Firmware.zip` | Klipper → stock firmware |
 
 ## Installation
 
-> **In preparation.** Both ways below run from a USB stick, without
-> opening the printer, and are tested on one J1.  Until the packages are
-> released, they are built with
-> [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os);
-> the installation in the EDL mode of the display module is described
-> in its [installation guide](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/blob/main/docs/INSTALL.md).
+Both ways run from a USB stick (FAT32, 2 GB or more) on the touch
+screen, without tools and without opening the printer.  Unpack the zip
+file and copy **its contents** to the top level of the stick.
 
 ### Stock firmware → Klipper
 

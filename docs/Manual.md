@@ -40,10 +40,10 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 > **Important.**  Do both steps on the first start, before the first
 > print.
 
-1. **Connect the WLAN** under **More → Network**: choose the network and
-   enter its password.  The printer needs the network for
+1. **Connect the WLAN** under **More → Network → WLAN**: choose the
+   network and enter its password.  The printer needs the network for
    - the **clock**: the display module has no battery for its clock and
-     takes the time from the network (see [Clock](#network-name-and-clock));
+     takes the time from the network (see [Clock](#clock));
    - the **updates** of KlipperSnapmakerJ1, Klipper, Moonraker and
      KlipperScreen; the printer checks for updates as soon as the WLAN is
      connected;
@@ -75,16 +75,17 @@ shutdown button: the J1 is switched off with its power switch.
 **Main menu.**
 - **Left:** the heaters with their current temperatures and a graph of
   the last minutes.  Tap a heater to set its temperature.
-- **Right:** the six main entries.
+- **Right:** the six main entries, in the order of a print: the print
+  itself first, then preparing it, the setup and More last.
 
 | Entry | Content |
 | --- | --- |
-| Move | home and move the axes, switch the active toolhead |
+| Print | files on the printer |
 | Temperature | heat, cool down, material presets |
 | Extrude | load, unload, extrude, filament sensors, pressure advance |
-| More | settings, fans, light, network, updates, console |
-| Print | files on the printer |
+| Move | home and move the axes, switch the active toolhead |
 | Calibration | the J1 calibration menu |
+| More | settings, fans, light, network, updates, console, system |
 
 The left nozzle is called **Left Nozzle** (T0, `extruder`) and the right
 one **Right Nozzle** (T1, `extruder1`).
@@ -496,11 +497,17 @@ set its thickness in 0.1 mm steps and tap **Save**.  It applies at once.
 
 ![More](manual/more.png)
 
-The generic KlipperScreen entries are joined by J1 entries: Light,
-Network Name, Clock and Pause Standby.  The generic bed level, bed mesh,
-Z calibrate, input shaper and Save Config entries are hidden.  The
-calibration menu covers them, and its results are stored without Save
-Config.
+The entries are arranged in three rows:
+
+| Row | Entries |
+| --- | --- |
+| Printing | Fine Tuning, Limits, Fan, Pause Standby |
+| Settings of the printer | Light, Clock, Network, KlipperScreen |
+| Tools and maintenance | Macros, Console, Update, System |
+
+The generic bed level, bed mesh, Z calibrate, input shaper and Save
+Config entries are hidden.  The calibration menu covers them, and its
+results are stored without Save Config.
 
 ### Light
 
@@ -558,37 +565,68 @@ What happens to a paused print:
 
 Set the bed standby temperature and the delay here; they are kept.
 
-### Network Name and Clock
+### Network
 
 <table>
-<tr><td><img src="manual/network-name.png" width="420"></td>
-<td><img src="manual/clock.png" width="420"></td></tr>
+<tr><td><img src="manual/network.png" width="420"></td>
+<td><img src="manual/network-name.png" width="420"></td></tr>
 </table>
 
+- **WLAN:** choose the network and enter its password; the page also
+  shows the address of the printer.
 - **Network Name:** the name of the printer in the network.  The web
   interface is reached at `http://<name>.local`.  Give each printer its
   own name when you have several.
-- **Clock:** sets the time zone and switches the clock in the title bar
-  on or off.  **The clock only runs correctly with the WLAN connected:**
-  the display module has no battery for its clock and takes the time
-  from the network.  Without a network the printer starts with the last
-  time it knew, so the clock, the print history and the log files show
-  a wrong time.
+
+### Clock
+
+![Clock](manual/clock.png)
+
+Sets the time zone and switches the clock in the title bar on or off.
+**The clock only runs correctly with the WLAN connected:** the display
+module has no battery for its clock and takes the time from the network.
+Without a network the printer starts with the last time it knew, so the
+clock, the print history and the log files show a wrong time.
 
 ### Other entries
 
 | Entry | Content |
 | --- | --- |
+| KlipperScreen | settings of the screen (language, theme, font size) |
 | Macros | runs Klipper macros |
 | Console | Klipper's g-code console |
 | Update | updates of KlipperSnapmakerJ1, Klipper, Moonraker and KlipperScreen |
-| KlipperScreen | settings of the screen (language, theme, font size) |
-| Network | WLAN connection |
-| System | system information, restart and shutdown of the host |
+| System | system information of the display module; at its end the way back to the [stock firmware](#back-to-the-stock-firmware) |
 
 **Updates.** Update KlipperSnapmakerJ1 first.  Klipper, Moonraker and
 KlipperScreen are offered only up to the versions this release is tested
 with.
+
+### Back to the stock firmware
+
+<table>
+<tr><td><img src="manual/system-stock.png" width="420"></td>
+<td><img src="manual/stock-firmware.png" width="420"></td></tr>
+</table>
+
+A fallback, so it sits at the end of **More → System** (scroll down):
+**Stock Firmware** returns the printer to the Snapmaker firmware.  It
+needs a USB stick with the contents of the stock firmware package (the
+official `J1_V*.bin` and the folder `stock-restore`).
+
+1. Plug in the stick and open **Stock Firmware**.  The page searches the
+   stick and shows the package and the Snapmaker system it found; **Search
+   USB Stick** searches again.
+2. Tap **Restore Stock Firmware** and confirm.  Not possible while
+   printing.
+3. Leave the stick plugged in and do not switch the printer off.  The
+   main controller gets the Snapmaker firmware, then the printer restarts
+   into its maintenance system, which writes the Snapmaker system, and
+   starts the Snapmaker system.
+
+Klipper, its settings, the calibrations and the files on the printer are
+deleted.  The Snapmaker setup then starts as on a new printer.  The
+[installation](../README.md#installation) describes both ways in full.
 
 ## Safety and error messages
 
@@ -634,7 +672,7 @@ The protections of the stock firmware are active:
 Besides the touch screen, the printer is operated from any browser in the
 network with **Mainsail**, which runs on the printer itself.  Open
 `http://snapmaker-j1.local`, or the name set in
-[Network Name](#network-name-and-clock), or the IP address shown in
+[Network Name](#network), or the IP address shown in
 KlipperScreen.  Touch screen and web interface work at the same time and
 always show the same state.
 

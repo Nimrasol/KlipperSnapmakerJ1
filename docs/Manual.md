@@ -600,7 +600,12 @@ clock, the print history and the log files show a wrong time.
 
 **Updates.** Update KlipperSnapmakerJ1 first.  Klipper, Moonraker and
 KlipperScreen are offered only up to the versions this release is tested
-with.
+with.  When a new release of KlipperSnapmakerJ1 is out, the touch screen
+asks once (not while printing): **Update** starts it, **Later** leaves it
+in the Update menu.  **Release candidates** at the end of the Update menu
+also offers test versions before a release (`vX.Y.Z-rc.N`), for users who
+help testing; switched off, only releases are offered and a test version
+already installed stays until the next release.
 
 ### Back to the stock firmware
 

@@ -10,6 +10,19 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
+## Unreleased
+
+- **Display wakes up again on touch** after the screen saver switched it
+  off during a print with tool changes (the print status page covered
+  the screen saver and took the touch).
+- **Updates only with releases:** the update manager offers new versions
+  of KlipperSnapmakerJ1 when a release is published, no longer every
+  change in between.
+- **Update notice:** the touch screen asks once per new release whether
+  to update (**Update** / **Later**), not while printing.
+- **Release candidates:** a switch at the end of the Update menu also
+  offers test versions (`vX.Y.Z-rc.N`) to users who help testing.
+
 ## v1.1.0 (2026-10-30)
 
 - **Installation from a USB stick** on the Snapmaker touch screen, with

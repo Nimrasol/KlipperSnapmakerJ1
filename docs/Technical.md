@@ -103,10 +103,19 @@ the versions this release is tested with: KlipperSnapmakerJ1 pins them
 in the update manager.  A release with newer tested versions moves the
 pins, so update KlipperSnapmakerJ1 first and then the others.
 
+Only releases are offered (Moonraker `channel: stable`), not every commit
+of `main`; the touch screen asks once per new release whether to update.
+Users who help testing switch on **Release candidates** in the Update
+menu: KlipperScreen then replaces the link
+`printer_data/config/snapmaker_j1/moonraker.conf` by a file that includes
+the repository's entry and sets `channel: beta`, so release candidates
+(`vX.Y.Z-rc.N`) are offered as well; `install.sh` keeps that file.
+
 ## Versions
 
 Releases are git tags `vX.Y.Z` following
-[Semantic Versioning](https://semver.org); the update manager shows the
+[Semantic Versioning](https://semver.org), release candidates
+`vX.Y.Z-rc.N`; the update manager shows the
 version of the installed release.  [CHANGELOG.md](../CHANGELOG.md) lists
 the changes of each release and what a version step means.  A release
 with newer tested versions of Klipper, Moonraker or KlipperScreen moves

@@ -533,6 +533,14 @@ release).  A release of KlipperSnapmakerJ1 with newer tested versions
 moves the pins; Moonraker restarts after that update and then offers
 Klipper, Moonraker and KlipperScreen up to the new versions.  A version
 newer than the pin (installed by hand) is kept and not offered back.
+KlipperSnapmakerJ1 itself is offered only as releases (`channel:
+stable`); the add-on (`update_notice.py`) reads the update status a
+minute after Klipper is ready and then hourly, and asks once per new
+release (stored in its settings) whether to update, not while printing,
+over another dialog or the dark screen saver.  The switch **Release
+candidates** at the end of the Update panel (`update_channel.py`) writes
+`snapmaker_j1/moonraker.conf` as a file that includes the repository's
+entry with `channel: beta`, or links it again, and restarts Moonraker.
 After a Klipper update, rebuild and install the main controller firmware
 when Klipper reports a protocol mismatch (`firmware/build.sh`, which also
 names the tested version).
@@ -758,7 +766,10 @@ start; "More → Light" changes it).  Under Wayland KlipperScreen
 only shows a black page, so the add-on also switches the backlight off
 (`bl_power` of `/sys/class/backlight`, writable for the group `video`
 on KlipperSnapmakerJ1-os) and on again when a touch closes the screen
-saver; the touch screen stays active.  The stock firmware instead
+saver; the touch screen stays active.  Panels that call `show_all()` while
+the screen saver shows (the print status at every tool change) would
+bring the hidden pages back on top of it; the add-on hides them again,
+and switches the backlight on when KlipperScreen starts.  The stock firmware instead
 dimmed the screen to 10% and showed print status.
 
 "More → Light" (also in the print menu) replaces the generic Pins panel:

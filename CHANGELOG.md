@@ -10,7 +10,7 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
-## Unreleased
+## v1.2.0 (2026-10-31)
 
 - **Display wakes up again on touch** after the screen saver switched it
   off during a print with tool changes (the print status page covered

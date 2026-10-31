@@ -17,7 +17,8 @@ from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
 from . import (calibration, chooser, datetime_panel, filament, hostname,
-               light, pause, stock, style)
+               light, pause, stock, style, update_channel,
+               update_notice)
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
@@ -102,6 +103,8 @@ def init(screen):
             _patch_system(screen, module.Panel)
         elif panel == "extrude":
             _patch_extrude(module.Panel)
+        elif panel == "updater":
+            _patch_updater(screen, module.Panel)
         return module
 
     screen._load_panel = _load_panel
@@ -136,6 +139,7 @@ def init(screen):
 
     def _state_ready(wait=True):
         screen.snapmaker_case_light.klipper_ready()
+        screen.snapmaker_update_notice.klipper_ready()
         if not screen.snapmaker_calibration_print:
             state_ready(wait)
             _offer_power_loss_resume(screen)
@@ -301,6 +305,7 @@ def init(screen):
     _set_backlight(BL_POWER_ON)
     datetime_panel.apply_clock(screen)
     screen.snapmaker_case_light = light.CaseLight(screen)
+    screen.snapmaker_update_notice = update_notice.UpdateNotice(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
 
 
@@ -710,6 +715,20 @@ def _patch_system(screen, panel_class):
 
     _create_layout.snapmaker_j1 = True
     panel_class.create_layout = _create_layout
+
+
+def _patch_updater(screen, panel_class):
+    # The switch for release candidates at the end of the update panel
+    init = panel_class.__init__
+    if getattr(init, "snapmaker_j1", False):
+        return
+
+    def _init(self, *args, **kwargs):
+        init(self, *args, **kwargs)
+        update_channel.add_switch(screen, self.main_box)
+
+    _init.snapmaker_j1 = True
+    panel_class.__init__ = _init
 
 
 def _patch_device_label(panel_class, method):

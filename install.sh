@@ -107,9 +107,13 @@ if grep -qF "[include $J1_PRINTER_CFG]" "$CONFIG_DIR/printer.cfg"; then
         "position_max: 205"
 fi
 
-# Moonraker update manager entry for this repository
-ln -sfn "$REPO_DIR/moonraker/KlipperSnapmakerJ1.conf" \
-    "$J1_CONFIG_DIR/moonraker.conf"
+# Moonraker update manager entry for this repository; a file instead of
+# the link includes it with release candidates (switched in KlipperScreen)
+if [ -L "$J1_CONFIG_DIR/moonraker.conf" ] \
+    || [ ! -e "$J1_CONFIG_DIR/moonraker.conf" ]; then
+    ln -sfn "$REPO_DIR/moonraker/KlipperSnapmakerJ1.conf" \
+        "$J1_CONFIG_DIR/moonraker.conf"
+fi
 touch "$MOONRAKER_CONF"
 if ! grep -qF "[include snapmaker_j1/moonraker.conf]" "$MOONRAKER_CONF"
 then

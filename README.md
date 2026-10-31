@@ -39,6 +39,15 @@ Raspberry Pi, no extra screen, no wiring.
   support update from the screen or the browser.
 - **The way back stays open.** The stock firmware can be installed again.
 
+## See it in action
+
+A two-color print in IDEX mode on a J1 with Klipper, from the touch
+screen to the finished part:
+
+<p align="center">
+<a href="https://www.youtube.com/watch?v=pg47hnWGrrI"><img src="docs/img/video-demo.jpg" width="720" alt="Video: Snapmaker J1 / J1S with Klipper – Printer in Action"></a>
+</p>
+
 ## A closer look
 
 ### Guided calibration, as on the stock display
@@ -129,9 +138,7 @@ The installation package holds an update package for the Snapmaker
 system (`J1_V*.bin`: the stock main controller firmware and the
 installer) and the Klipper system in the folder `install`.
 
-**Video:** [Install Klipper on a Snapmaker J1 / J1s](https://www.youtube.com/watch?v=U0IwCsgZC0M)
-
-[![Video: Install Klipper on a Snapmaker J1 / J1s](https://img.youtube.com/vi/U0IwCsgZC0M/hqdefault.jpg)](https://www.youtube.com/watch?v=U0IwCsgZC0M)
+<a href="https://www.youtube.com/watch?v=U0IwCsgZC0M"><img src="docs/img/video-install.jpg" width="640" alt="Video: Install Klipper on a Snapmaker J1 / J1s"></a>
 
 > [!CAUTION]
 > **This takes a while: about 7 minutes.  Do not pull the USB
@@ -186,9 +193,7 @@ The stock firmware package holds the official Snapmaker update package
 (`J1_V*.bin`) and the Snapmaker system of the display module in the
 folder `stock-restore`.
 
-**Video:** [Restore Snapmaker J1 Stock Firmware from Klipper](https://www.youtube.com/watch?v=L98PkPFao04)
-
-[![Video: Restore Snapmaker J1 Stock Firmware from Klipper](https://img.youtube.com/vi/L98PkPFao04/hqdefault.jpg)](https://www.youtube.com/watch?v=L98PkPFao04)
+<a href="https://www.youtube.com/watch?v=L98PkPFao04"><img src="docs/img/video-restore.jpg" width="640" alt="Video: Restore Snapmaker J1 Stock Firmware from Klipper"></a>
 
 > [!CAUTION]
 > **This takes a while: about 3 minutes.  Do not pull the USB

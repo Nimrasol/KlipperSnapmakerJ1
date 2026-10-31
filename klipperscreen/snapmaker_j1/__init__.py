@@ -295,7 +295,10 @@ def init(screen):
         _dialog.snapmaker_j1 = True
         screen.gtk.Dialog = _dialog
 
-    _patch_screensaver()
+    _patch_screensaver(screen)
+    # A restart of KlipperScreen with the screen saver showing leaves the
+    # backlight off
+    _set_backlight(BL_POWER_ON)
     datetime_panel.apply_clock(screen)
     screen.snapmaker_case_light = light.CaseLight(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
@@ -414,7 +417,25 @@ def _set_backlight(value):
             logging.info("Backlight %s not switched: %s", name, e)
 
 
-def _patch_screensaver():
+def _patch_screensaver(screen):
+    # The screen saver hides the pages and puts a black page below them;
+    # panels that call show_all() while it is showing (the print status
+    # does at every tool change) bring the pages back on top.  With the
+    # backlight off they stay invisible, a touch reaches them instead of
+    # the screen saver and the backlight stays off: hide them again
+    show_all = screen.show_all
+    if not getattr(show_all, "snapmaker_j1", False):
+        def _show_all(*args):
+            show_all(*args)
+            blackbox = screen.screensaver.blackbox
+            if blackbox is not None:
+                for child in screen.overlay.get_children():
+                    if child is not blackbox:
+                        child.hide()
+
+        _show_all.snapmaker_j1 = True
+        screen.show_all = _show_all
+
     from ks_includes.widgets.screensaver import ScreenSaver
     if getattr(ScreenSaver.show, "snapmaker_j1", False):
         return

@@ -118,13 +118,8 @@ starts prints directly.
 ## Download
 
 > [!WARNING]
-> **The Klipper installation is paused for the moment.**  Not all
-> hardware versions of the J1 display module are supported yet: on some
-> printers the display stays dark after the installation
-> ([issue #1](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/1)).
-> The installation package will be available again as soon as this is
-> solved.  Printers that already run Klipper are not affected, and the way
-> back to the stock firmware stays available.
+> **The Klipper installation is paused for the moment.**  It does not
+> work on all J1 printers yet; this will be fixed as soon as possible.
 
 [![Download: Stock firmware](https://img.shields.io/badge/Download-Stock_firmware-555555?style=for-the-badge&logo=github)](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/latest/download/J1-Stock-Firmware.zip)
 

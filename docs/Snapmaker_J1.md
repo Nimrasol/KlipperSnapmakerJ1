@@ -151,6 +151,7 @@ E0 111, E1 011 (1 = high).
 | Motion, IDEX full control, duplication, mirror | `cartesian` + `[dual_carriage]`, `SET_DUAL_CARRIAGE`, `SYNC_EXTRUDER_MOTION`; `M605` macro | macros |
 | Backup mode (continue on the other toolhead after a runout) | runout macro switches the tool and remaps T/M104/M106 | macros |
 | Print mode from the file header (`;Extruder Mode:`) | `SNAPMAKER_FILE_MODE` from `SDCARD_PRINT_FILE` | `snapmaker_j1` |
+| Print mode chosen in the print dialog, print moved in X, checks of the file (one toolhead, width), retraction warning | `SDCARD_PRINT_FILE MODE= X_OFFSET=`, `M605` of the file ignored meanwhile | KlipperScreen add-on (`print_mode.py`), macros |
 | Homing order Z, X, Y and tool restore | `[homing_override]` | macros |
 | Tool change with Z hop and parking | `T0`/`T1` macros | macros |
 | TMC2209 behind a UART mux | `[tmc2209]` with `select_pins` | none |
@@ -270,6 +271,11 @@ undetected nozzle counts as a mismatch.  The dialog uses Klipper's
 (`_SNAPMAKER_NOZZLE_CONTINUE`, prints the file).
 `SDCARD_PRINT_FILE FILENAME=<file> NOZZLE_CHECK=0` prints without the
 check (the calibration prints, as in the stock firmware).
+
+`SDCARD_PRINT_FILE FILENAME=<file> MODE=<FULL_CONTROL|DUPLICATION|MIRROR|BACKUP>
+X_OFFSET=<mm>` prints the file in that IDEX mode, moved by X_OFFSET in X
+(the print dialog of the touch screen computes it as the stock display
+does); the `M605` of the file is ignored during that print.
 
 The hotends are pushed in without a cable; a missing hotend opens its
 temperature sensor, which then reads far above `max_temp`.  As the stock

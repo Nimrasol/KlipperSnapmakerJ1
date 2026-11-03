@@ -122,8 +122,9 @@ The same dialog also appears in Mainsail and Fluidd.
 
 ### Print modes
 
-The J1 slicer profiles write the IDEX mode into the file header.  The
-printer selects that mode automatically when the print starts:
+The J1 slicer profiles write the IDEX mode into the file (header or
+`M605`).  The print dialog shows the four modes with the one of the file
+selected; tap another to print the file in that mode:
 
 | Mode | Behavior |
 | --- | --- |
@@ -131,6 +132,21 @@ printer selects that mode automatically when the print starts:
 | Duplication | both toolheads print the same part side by side |
 | Mirror | the right toolhead prints a mirrored copy |
 | Backup | after a filament runout the print continues on the other toolhead |
+
+As on the stock display, the printer moves the print in X for the chosen
+mode: duplication puts its center at X 80 and mirror at X 75, a
+duplication or mirror file printed in IDEX or backup mode goes to the
+middle of the bed (X 150).  A mode that does not fit the file explains
+why when you tap it:
+
+- duplication, mirror and backup need a file that prints with one
+  toolhead;
+- duplication needs a print narrower than 160 mm in X, mirror narrower
+  than 150 mm, the purge line included.
+
+Reading a large file takes a few seconds; the mode buttons work once it
+is done.  Before the print starts, the dialog warns if the file retracts
+more than 2 mm (risk of a clogged nozzle).
 
 During the print, the print page shows the mode next to the elapsed time,
 and the part fans of both toolheads.

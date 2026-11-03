@@ -150,7 +150,8 @@ class SnapmakerJ1:
             buttons.register_buttons([bed_feedback_pin],
                                      self._bed_feedback_handler)
         self.nozzle_check = {'filename': None, 'mismatch': False,
-                             'file': [None, None], 'machine': [None, None]}
+                             'file': [None, None], 'machine': [None, None],
+                             'mode': None, 'x_offset': 0.}
         self.print_state = None
         # PID calibration in progress (heater, ControlAutoTune) and its
         # abort request, which comes through the API while the calibration
@@ -606,8 +607,13 @@ class SnapmakerJ1:
             if (machine[i] is None
                 or abs(machine[i] - file_diameters[i]) > NOZZLE_TOLERANCE):
                 mismatch = True
+        # The print mode chosen on the touch screen, for the print after
+        # the dialog
+        mode = gcmd.get('MODE', None)
         self.nozzle_check = {'filename': filename, 'mismatch': mismatch,
-                             'file': file_diameters, 'machine': machine}
+                             'file': file_diameters, 'machine': machine,
+                             'mode': mode.upper() if mode else None,
+                             'x_offset': gcmd.get_float('X_OFFSET', 0.)}
         if mismatch:
             def fmt(d):
                 return "?" if d is None else "%.1f mm" % (d,)

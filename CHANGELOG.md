@@ -17,6 +17,13 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   by itself, with one automatic restart; before, it stopped with an
   error on these boards.  Untested on a revision 1 board so far.
 - Board revisions after 2 run like revision 2, as in the stock firmware.
+- **Print mode on the touch screen:** the print dialog offers IDEX,
+  backup, duplication and mirror for every file and moves the print in X
+  to where the mode needs it, with the checks of the stock display (one
+  toolhead only; duplication narrower than 160 mm, mirror than 150 mm).
+  The `M605` of the file then does not change the chosen mode.
+- **Retraction warning:** the print dialog warns if the file retracts
+  more than 2 mm, as the stock display.
 
 ## v1.2.0 (2026-10-31)
 

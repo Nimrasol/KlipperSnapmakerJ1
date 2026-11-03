@@ -17,7 +17,7 @@ from ks_includes.printer import Printer
 from ks_includes.screen_panel import ScreenPanel
 
 from . import (calibration, chooser, datetime_panel, filament, hostname,
-               light, pause, stock, style, update_channel,
+               light, pause, print_mode, stock, style, update_channel,
                update_notice)
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
@@ -105,6 +105,8 @@ def init(screen):
             _patch_extrude(module.Panel)
         elif panel == "updater":
             _patch_updater(screen, module.Panel)
+        elif panel == "gcodes":
+            print_mode.patch_gcodes(screen, module.Panel)
         return module
 
     screen._load_panel = _load_panel

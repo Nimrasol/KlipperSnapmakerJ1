@@ -13,7 +13,8 @@
 **Your J1 runs Klipper?  Show it!**  Post photos and videos of your
 printer and your prints in
 [Show and tell](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell).
-They help others decide and show which J1 printers already run Klipper.
+They help me to see your joy and others decide and show which J1
+printers already run Klipper.
 
 If this project is useful to you, you can also
 [buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).  This helps me to
@@ -270,7 +271,8 @@ Questions, ideas and experiences go to the
 **Your J1 runs Klipper?  Show it!**  Post photos and videos of your
 printer and your prints in
 [Show and tell](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell).
-They help others decide and show which J1 printers already run Klipper.
+They help me to see your joy and others decide and show which J1
+printers already run Klipper.
 
 ## Special thanks
 

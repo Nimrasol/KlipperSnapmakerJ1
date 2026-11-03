@@ -243,6 +243,16 @@ The open items are listed in the
 | [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | the Linux system of the display module, which runs Klipper, Moonraker, KlipperScreen and Mainsail on the printer |
 | [Nimrasol/klipper](https://github.com/Nimrasol/klipper/tree/j1), branch `j1` | the main controller support (GD32F305, J1 factory bootloader) as Klipper commits, for reference and review |
 
+## Community
+
+Questions, ideas and experiences go to the
+[message board](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions).
+
+**Your J1 runs Klipper?  Show it!**  Post photos and videos of your
+printer and your prints in
+[Show and tell](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell).
+They help others decide and show which J1 printers already run Klipper.
+
 ## Special thanks
 
 To **eazrael** ([wiki.evilazrael.de](https://wiki.evilazrael.de/)), who

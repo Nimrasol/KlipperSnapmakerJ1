@@ -24,6 +24,8 @@ If KlipperSnapmakerJ1 is useful to you, you can also
 </tr>
 </table>
 
+## What it is
+
 **Your Snapmaker J1 with Klipper — on its own touch screen, with the J1
 calibrations you know.**
 

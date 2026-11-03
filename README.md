@@ -4,12 +4,28 @@
 <img src="docs/img/klipper-snapmaker-j1.png" width="900" alt="Snapmaker J1 running Klipper">
 </p>
 
+<table>
+<tr>
+<td>
+
+## How to support
+
+**Your J1 runs Klipper?  Show it!**  Post photos and videos of your
+printer and your prints in
+[Show and tell](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell).
+They help others decide and show which J1 printers already run Klipper.
+
+If KlipperSnapmakerJ1 is useful to you, you can also
+[buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).
+
+<a href="https://buymeacoffee.com/3pjgRWxRFB"><img src="https://img.shields.io/badge/Buy_me_a_coffee-support_this_project-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+
+</td>
+</tr>
+</table>
+
 **Your Snapmaker J1 with Klipper — on its own touch screen, with the J1
 calibrations you know.**
-
-<p align="center">
-<a href="https://buymeacoffee.com/3pjgRWxRFB"><img src="https://img.shields.io/badge/Buy_me_a_coffee-support_this_project-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
-</p>
 
 KlipperSnapmakerJ1 replaces the stock firmware of the Snapmaker J1 IDEX
 printer with [Klipper](https://github.com/Klipper3d/klipper).  The display
@@ -266,26 +282,6 @@ To **jacob3141** ([@jacob3141](https://github.com/jacob3141)), who tested
 the installation on his printers again and again, sent eMMC dumps and
 logs, and so made it work on more J1 display modules
 ([issue #1](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/1)).
-
-<table>
-<tr>
-<td>
-
-## How to support
-
-**Your J1 runs Klipper?  Show it!**  Post photos and videos of your
-printer and your prints in
-[Show and tell](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell).
-They help others decide and show which J1 printers already run Klipper.
-
-If KlipperSnapmakerJ1 is useful to you, you can also
-[buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).
-
-<a href="https://buymeacoffee.com/3pjgRWxRFB"><img src="https://img.shields.io/badge/Buy_me_a_coffee-support_this_project-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
-
-</td>
-</tr>
-</table>
 
 ## License
 

@@ -248,6 +248,11 @@ display system, and his
 [write-up](https://wiki.evilazrael.de/snapmaker-j1-klipper-installation)
 showed that Klipper on the J1 can work.
 
+To **jacob3141** ([@jacob3141](https://github.com/jacob3141)), who tested
+the installation on his printers again and again, sent eMMC dumps and
+logs, and so made it work on more J1 display modules
+([issue #1](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/1)).
+
 ## Support
 
 If KlipperSnapmakerJ1 is useful to you, you can

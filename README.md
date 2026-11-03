@@ -117,10 +117,8 @@ starts prints directly.
 
 ## Download
 
-> [!WARNING]
-> **The Klipper installation is paused for the moment.**  It does not
-> work on all J1 printers yet; this will be fixed as soon as possible.
-
+[![Download: Klipper installation](https://img.shields.io/badge/Download-Klipper_installation-ff8a00?style=for-the-badge&logo=github)](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/latest/download/KlipperSnapmakerJ1-install.zip)
+&nbsp;
 [![Download: Stock firmware](https://img.shields.io/badge/Download-Stock_firmware-555555?style=for-the-badge&logo=github)](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/latest/download/J1-Stock-Firmware.zip)
 
 | File | For |

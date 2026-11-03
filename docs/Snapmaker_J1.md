@@ -19,6 +19,7 @@ The analysis is based on these artifacts:
 | Main controller flash dump (first 512KiB of 1MiB, via SWD) | application at 0x08002800, byte identical to the stock V2.2.14 update image | firmware version and memory layout |
 | Main controller bootloader dump (0x08000000-0x080027FF) | "V1.0.3-boot" | boot and update protocol (disassembled) |
 | [SnapmakerController-IDEX](https://github.com/Snapmaker/SnapmakerController-IDEX) | V2.2.14 plus one fix, matches the installed firmware | behavioral reference for the main controller |
+| [Snapmaker-J1-Screen-App](https://github.com/Snapmaker/Snapmaker-J1-Screen-App) | source of the display application (`apps/j1`, versionName 1.10.0, published September 2026) | behavioral reference for the touch screen workflows and the protocol to the main controller |
 | Display eMMC dump (Quectel SC20-W, Android) | userdata: `com.snapmaker.j1` (Feb 2026), `mc.bin` V2.2.14 | display workflows, update packages, calibration prints |
 
 The display application in `/system/app/j1` is an outdated 2022 base

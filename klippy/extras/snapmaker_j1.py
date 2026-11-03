@@ -27,6 +27,31 @@ PID_CHECK_TIME = 1.
 
 # Board revision voltage divider on the hw_version_pin (upper bounds)
 HW_VERSION_MV = [450., 700., 1400., 2000., 2700., 3200.]
+# Revision 1 boards have the mains failure input and the DIAG lines of
+# the drivers on other pins; as in the stock firmware, every later
+# revision is wired like revision 2.  printer-snapmaker-j1-2022.cfg is
+# written for revision 2 and includes this file (next to printer.cfg),
+# which Klipper writes on a revision 1 board and removes on a later one.
+BOARD_FILE = 'snapmaker_j1_board.cfg'
+BOARD_REV1 = """# Written by Klipper: this printer has a revision 1 main board.  Klipper
+# checks the revision at every start and rewrites or removes this file
+# when the board changes.
+[snapmaker_j1]
+hardware_version: 1
+
+[snapmaker_j1_power_loss]
+sense_pin: ^PC12
+
+[snapmaker_j1_probe]
+stallguard_pin_stepper_x: !PE3
+stallguard_pin_dual_carriage: !PE3
+stallguard_pin_stepper_y: !PE3
+stallguard_pin_stepper_z: !PE3
+"""
+# One automatic adjustment per Klipper process (kept over restarts), so a
+# reading that changes between starts cannot make Klipper restart again
+# and again
+board_adjusted = [False]
 
 # Toolhead identification resistor (min mV, max mV, material, diameter)
 NOZZLE_TYPES = [
@@ -95,6 +120,8 @@ class SnapmakerJ1:
         self.gcode = self.printer.lookup_object('gcode')
         # Board revision
         self.hw_version = config.getint('hardware_version', minval=1)
+        self.board_file = os.path.join(os.path.dirname(
+            self.printer.get_start_args()['config_file']), BOARD_FILE)
         self.hw_adc = AnalogInput(config, 'snapmaker_j1_hw_version',
                                   config.get('hw_version_pin'))
         self.detected_hw_version = None
@@ -193,15 +220,60 @@ class SnapmakerJ1:
         self.detected_hw_version = self._calc_hw_version()
         if self.detected_hw_version is None:
             return eventtime + 1.
-        if self.detected_hw_version != self.hw_version:
-            self.printer.invoke_shutdown(
-                "Snapmaker J1 board revision %d detected, but the"
-                " configuration is for revision %d - set hardware_version"
-                " and the revision dependent pins (sense_pin of"
-                " [snapmaker_j1_power_loss], stallguard_pin_* of"
-                " [snapmaker_j1_probe])"
-                % (self.detected_hw_version, self.hw_version))
+        if (self.detected_hw_version == 1) == (self.hw_version == 1):
+            return self.reactor.NEVER
+        if self._adjust_board_file(self.detected_hw_version):
+            return self.reactor.NEVER
+        self.printer.invoke_shutdown(
+            "Snapmaker J1 board revision %d detected, but the"
+            " configuration is for revision %d - set hardware_version"
+            " and the revision dependent pins (sense_pin of"
+            " [snapmaker_j1_power_loss], stallguard_pin_* of"
+            " [snapmaker_j1_probe])"
+            % (self.detected_hw_version, self.hw_version))
         return self.reactor.NEVER
+    # Write (revision 1) or remove (later revisions) the board file and
+    # restart, so the configuration matches the board.  False when that
+    # cannot help: already done once, the file is already as needed (the
+    # revision is set elsewhere) or a heater is on
+    def _adjust_board_file(self, detected):
+        if board_adjusted[0]:
+            return False
+        pheaters = self.printer.lookup_object('heaters')
+        eventtime = self.reactor.monotonic()
+        for heater in pheaters.get_all_heaters():
+            if pheaters.lookup_heater(heater).get_status(
+                    eventtime)['target']:
+                return False
+        try:
+            current = None
+            if os.path.exists(self.board_file):
+                with open(self.board_file) as f:
+                    current = f.read()
+            if detected == 1:
+                if current == BOARD_REV1:
+                    return False
+                tmp = self.board_file + '.tmp'
+                with open(tmp, 'w') as f:
+                    f.write(BOARD_REV1)
+                os.rename(tmp, self.board_file)
+            else:
+                if current is None:
+                    return False
+                os.remove(self.board_file)
+        except (IOError, OSError):
+            logging.exception("Snapmaker J1: cannot update %s",
+                              self.board_file)
+            return False
+        board_adjusted[0] = True
+        msg = ("Snapmaker J1 board revision %d detected: configuration"
+               " adjusted, restarting" % (detected,))
+        logging.info(msg)
+        self.gcode.respond_info(msg)
+        # The micro-controller gets other pins: a plain restart would stop
+        # at the changed MCU configuration
+        self.printer.request_exit('firmware_restart')
+        return True
     # Nozzle identification
     def _nozzle_info(self, index):
         mv = self.nozzle_adcs[index].get_mv()

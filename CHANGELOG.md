@@ -10,6 +10,14 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
+## Unreleased
+
+- **Board revision 1:** Klipper detects the main board revision at the
+  start and sets the revision 1 pins (mains failure input, StallGuard)
+  by itself, with one automatic restart; before, it stopped with an
+  error on these boards.  Untested on a revision 1 board so far.
+- Board revisions after 2 run like revision 2, as in the stock firmware.
+
 ## v1.2.0 (2026-10-31)
 
 - **Display wakes up again on touch** after the screen saver switched it

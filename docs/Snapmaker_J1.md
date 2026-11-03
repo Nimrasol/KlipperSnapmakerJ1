@@ -228,9 +228,16 @@ and, where the values stored on a J1 are lower (M503), from those:
 ```
 [snapmaker_j1]
 hardware_version: 2
-#   Board revision the configuration is written for (the power loss and
-#   StallGuard wiring differs). Klipper shuts down if the board reports
-#   another revision. This parameter must be provided.
+#   Board revision the configuration is written for: 1, or 2 for
+#   revision 2 and the later ones (wired alike, as the stock firmware
+#   treats them). The power loss and StallGuard wiring of revision 1
+#   differs. printer-snapmaker-j1-2022.cfg is written for revision 2 and
+#   includes snapmaker_j1_board.cfg next to printer.cfg: on a revision 1
+#   board Klipper writes that file with the revision 1 pins
+#   (hardware_version, sense_pin of [snapmaker_j1_power_loss],
+#   stallguard_pin_* of [snapmaker_j1_probe]) and restarts once; on a
+#   later revision it removes the file. If the revision still does not
+#   match, Klipper shuts down. This parameter must be provided.
 hw_version_pin: PB1
 nozzle_id_pin_t0: PA5
 nozzle_id_pin_t1: PA6

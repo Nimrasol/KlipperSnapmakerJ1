@@ -224,10 +224,12 @@ screens.
 ## Status
 
 **Version 1.2.0** ([changelog](CHANGELOG.md)), installation package
-[v1.2.1](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/tag/v1.2.1).
-Runs on the J1 (board revision 2), with Klipper, Moonraker and
+[v1.2.2](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/tag/v1.2.2).
+Runs on the J1, with Klipper, Moonraker and
 KlipperScreen on the display module: printing, the calibration menu and
 the filament handling on the touch screen, and Mainsail in the browser.
+Klipper detects the main board revision and sets its pins by itself
+(revision 1 is not tested on a printer yet).
 The open items are listed in the
 [technical documentation](docs/Snapmaker_J1.md#open-items).
 

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help with the installation
+    url: https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/q-a
+    about: Ask in Q&A on the message board.  Others with the same question find the answer there.
+  - name: Idea or feature request
+    url: https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/ideas
+    about: Suggest it in Ideas on the message board.
+  - name: Show your J1 running Klipper
+    url: https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell
+    about: Post photos and videos of your printer and your prints in Show and tell.

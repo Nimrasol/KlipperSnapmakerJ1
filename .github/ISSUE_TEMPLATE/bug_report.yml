@@ -1,0 +1,53 @@
+name: Bug report
+description: Something does not work as described in the README or the user manual.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting!  For questions, please use the
+        [message board](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/q-a)
+        instead.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      options:
+        - Installation (stock firmware → Klipper)
+        - Back to the stock firmware
+        - Touch screen (KlipperScreen)
+        - Calibration
+        - Printing
+        - Web interface (Mainsail)
+        - Updates
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?  Photos or videos of the screen help a lot.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      description: Installation package (for example v1.2.2) and, if Klipper runs, the KlipperSnapmakerJ1 version from More → System.
+      placeholder: package v1.2.2, KlipperSnapmakerJ1 v1.2.0
+    validations:
+      required: true
+  - type: input
+    id: printer
+    attributes:
+      label: Printer
+      description: J1 or J1s, and the stock firmware version before the installation, if you know it.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Installation problems: attach `install-log.txt` and `maint-log.txt` from the folder `install` on the USB stick.
+        Problems while Klipper runs: attach `klippy.log` (Mainsail: Machine → logs) and, for the touch screen, `KlipperScreen.log`.
+      placeholder: Drag the files here.

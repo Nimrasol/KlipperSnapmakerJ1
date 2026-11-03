@@ -267,7 +267,11 @@ the installation on his printers again and again, sent eMMC dumps and
 logs, and so made it work on more J1 display modules
 ([issue #1](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/1)).
 
-## Support
+<table>
+<tr>
+<td>
+
+## How to support
 
 **Your J1 runs Klipper?  Show it!**  Post photos and videos of your
 printer and your prints in
@@ -276,6 +280,12 @@ They help others decide and show which J1 printers already run Klipper.
 
 If KlipperSnapmakerJ1 is useful to you, you can also
 [buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).
+
+<a href="https://buymeacoffee.com/3pjgRWxRFB"><img src="https://img.shields.io/badge/Buy_me_a_coffee-support_this_project-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+
+</td>
+</tr>
+</table>
 
 ## License
 

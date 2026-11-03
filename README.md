@@ -15,8 +15,9 @@ printer and your prints in
 [Show and tell](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell).
 They help others decide and show which J1 printers already run Klipper.
 
-If KlipperSnapmakerJ1 is useful to you, you can also
-[buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).
+If this project is useful to you, you can also
+[buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).  This helps me to
+keep up my work 🥳  Hope you enjoy it!
 
 <a href="https://buymeacoffee.com/3pjgRWxRFB"><img src="https://img.shields.io/badge/Buy_me_a_coffee-support_this_project-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 

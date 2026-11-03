@@ -269,7 +269,12 @@ logs, and so made it work on more J1 display modules
 
 ## Support
 
-If KlipperSnapmakerJ1 is useful to you, you can
+**Your J1 runs Klipper?  Show it!**  Post photos and videos of your
+printer and your prints in
+[Show and tell](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/categories/show-and-tell).
+They help others decide and show which J1 printers already run Klipper.
+
+If KlipperSnapmakerJ1 is useful to you, you can also
 [buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).
 
 ## License

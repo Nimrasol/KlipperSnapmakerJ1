@@ -23,7 +23,9 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   toolhead only; duplication narrower than 160 mm, mirror than 150 mm).
   The purge line of the start G-code stays in place and does not count.
   In Mainsail and Fluidd the macro `SNAPMAKER_PRINT_MODE` offers the same
-  choice for the file uploaded last.
+  choice for the file uploaded last; Mainsail gets a panel **Snapmaker
+  J1** with it at the top of the dashboard (unless its macros are set up
+  already).
   The `M605` of the file then does not change the chosen mode.
 - **Retraction warning:** the print dialog warns if the file retracts
   more than 2 mm, as the stock display.

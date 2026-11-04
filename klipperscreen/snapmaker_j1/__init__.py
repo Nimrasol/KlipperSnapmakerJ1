@@ -18,7 +18,7 @@ from ks_includes.screen_panel import ScreenPanel
 
 from . import (calibration, chooser, datetime_panel, filament, hostname,
                light, pause, print_mode, stock, style, update_channel,
-               update_notice)
+               update_notice, web_panel)
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
@@ -142,6 +142,7 @@ def init(screen):
     def _state_ready(wait=True):
         screen.snapmaker_case_light.klipper_ready()
         screen.snapmaker_update_notice.klipper_ready()
+        web_panel.setup(screen)
         if not screen.snapmaker_calibration_print:
             state_ready(wait)
             _offer_power_loss_resume(screen)

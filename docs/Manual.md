@@ -152,7 +152,11 @@ the folder `snapmaker_j1/print_mode` (only the last one is kept).
 In Mainsail or Fluidd, the macro **SNAPMAKER_PRINT_MODE** opens the same
 choice as a dialog for the file uploaded last (or the one given as
 `FILENAME`); a print started there without it prints in the mode of the
-file.
+file.  Mainsail shows it in the panel **Snapmaker J1** at the top of its
+dashboard, with filament load and unload, the noise mode and, while
+paused, heating the print again.  The printer sets this panel up once,
+as long as the macros of Mainsail are not set up otherwise (Mainsail
+then uses its expert macro mode; Settings → Macros switches back).
 
 Reading a large file takes a few seconds; the mode buttons work once it
 is done.  Before the print starts, the dialog warns if the file retracts

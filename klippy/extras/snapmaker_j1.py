@@ -5,7 +5,7 @@
 # Copyright (C) 2026  Nimrasol
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import os, logging
+import os, logging, threading, importlib.util
 from . import heaters, pid_calibrate
 
 ADC_REPORT_TIME = 0.500
@@ -48,6 +48,20 @@ stallguard_pin_dual_carriage: !PE3
 stallguard_pin_stepper_y: !PE3
 stallguard_pin_stepper_z: !PE3
 """
+# The print file checks of the IDEX modes, shared with the print dialog of
+# the touch screen (plain Python, loaded by its path in the repository)
+PRINT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          '..', '..', 'scripts', 'snapmaker_j1_print_file.py')
+MODE_NAMES = {'FULL_CONTROL': 'IDEX', 'BACKUP': 'Backup',
+              'DUPLICATION': 'Duplication', 'MIRROR': 'Mirror'}
+
+def load_print_file():
+    spec = importlib.util.spec_from_file_location('snapmaker_j1_print_file',
+                                                  PRINT_FILE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 # One automatic adjustment per Klipper process (kept over restarts), so a
 # reading that changes between starts cannot make Klipper restart again
 # and again
@@ -179,6 +193,13 @@ class SnapmakerJ1:
         self.gcode.register_command(
             'SNAPMAKER_PID_RESET', self.cmd_SNAPMAKER_PID_RESET,
             desc=self.cmd_SNAPMAKER_PID_RESET_help)
+        # Print mode choice for the web interface (as the print dialog of
+        # the touch screen): the file, its analysis and a busy flag
+        self.pm = {'filename': None, 'info': None, 'busy': False}
+        for name in ('DIALOG', 'START', 'CANCEL'):
+            self.gcode.register_command(
+                '_SNAPMAKER_PRINT_MODE_' + name,
+                getattr(self, 'cmd_SNAPMAKER_PRINT_MODE_' + name))
     def _handle_ready(self):
         # PID_CALIBRATE applies and stores its result itself, so no
         # SAVE_CONFIG (and Klipper restart) is needed.  Replaced once all
@@ -622,6 +643,134 @@ class SnapmakerJ1:
                 " L %s, R %s" % (fmt(file_diameters[0]),
                                  fmt(file_diameters[1]),
                                  fmt(machine[0]), fmt(machine[1])))
+
+    # Print mode choice (SNAPMAKER_PRINT_MODE in snapmaker-j1-macros.cfg).
+    # Reading a large file takes seconds on the display module: it runs in
+    # a thread, the dialog (action:prompt) follows from the reactor
+    def _pm_gcodes(self):
+        return self.printer.lookup_object('virtual_sdcard').sdcard_dirname
+    def _pm_newest(self):
+        gcodes = self._pm_gcodes()
+        newest = None
+        for root, dirs, files in os.walk(gcodes):
+            top = os.path.normpath(root) == os.path.normpath(gcodes)
+            # Not the calibration prints and the copies of this add-on
+            dirs[:] = [d for d in dirs if not d.startswith('.')
+                       and not (top and d == 'snapmaker_j1')]
+            for name in files:
+                if not name.lower().endswith(('.gcode', '.gco', '.g')):
+                    continue
+                path = os.path.join(root, name)
+                mtime = os.path.getmtime(path)
+                if newest is None or mtime > newest[0]:
+                    newest = (mtime, os.path.relpath(path, gcodes))
+        return newest[1].replace(os.sep, '/') if newest else None
+    def _pm_check_idle(self, gcmd):
+        sdcard = self.printer.lookup_object('virtual_sdcard')
+        if sdcard.is_active() or self.pm['busy']:
+            raise gcmd.error("Not possible while printing")
+    def _pm_thread(self, work, done):
+        # work() in a thread, then done(result) in the reactor
+        self.pm['busy'] = True
+        reactor = self.reactor
+        def run():
+            try:
+                result = work()
+            except Exception:
+                logging.exception("Snapmaker J1 print mode")
+                result = None
+            reactor.register_async_callback(
+                lambda eventtime: self._pm_done(done, result))
+        threading.Thread(target=run, daemon=True).start()
+    def _pm_done(self, done, result):
+        self.pm['busy'] = False
+        try:
+            done(result)
+        except self.printer.command_error as e:
+            self.gcode.respond_info(str(e))
+    def _pm_prompt(self, lines):
+        for line in lines:
+            self.gcode.respond_raw("// action:" + line)
+    def cmd_SNAPMAKER_PRINT_MODE_DIALOG(self, gcmd):
+        self._pm_check_idle(gcmd)
+        pf = load_print_file()
+        filename = gcmd.get('FILENAME', '').strip().lstrip('/')
+        if not filename:
+            filename = self._pm_newest()
+            if filename is None:
+                raise gcmd.error("No print file found")
+        path = os.path.join(self._pm_gcodes(), filename)
+        if not os.path.isfile(path):
+            raise gcmd.error("Print file %s not found" % (filename,))
+        gcmd.respond_info("Checking %s..." % (filename,))
+        def done(info):
+            if info is None:
+                raise self.printer.command_error(
+                    "The file %s could not be read" % (filename,))
+            self.pm.update(filename=filename, info=info)
+            lines = ["prompt_begin Print Mode",
+                     "prompt_text %s - mode of the file: %s"
+                     % (filename, MODE_NAMES[info['mode']])]
+            buttons = []
+            for mode in pf.MODES:
+                reason = pf.check_mode(info, mode)
+                if reason:
+                    lines.append("prompt_text %s: %s"
+                                 % (MODE_NAMES[mode], reason))
+                    continue
+                style = 'primary' if mode == info['mode'] else 'secondary'
+                buttons.append(
+                    "prompt_button %s|_SNAPMAKER_PRINT_MODE_START MODE=%s|%s"
+                    % (MODE_NAMES[mode], mode, style))
+            if pf.retraction_too_long(info):
+                lines.append(
+                    "prompt_text Warning: the retraction distance of this"
+                    " file exceeds the recommended range (0-2 mm), which"
+                    " might cause nozzle clogging.")
+            lines += ["prompt_button_group_start"] + buttons + [
+                "prompt_button_group_end",
+                "prompt_footer_button Cancel|_SNAPMAKER_PRINT_MODE_CANCEL",
+                "prompt_show"]
+            self._pm_prompt(lines)
+        self._pm_thread(lambda: pf.analyze(path), done)
+    def cmd_SNAPMAKER_PRINT_MODE_CANCEL(self, gcmd):
+        self.pm['info'] = None
+        self._pm_prompt(["prompt_end"])
+    def cmd_SNAPMAKER_PRINT_MODE_START(self, gcmd):
+        self._pm_prompt(["prompt_end"])
+        self._pm_check_idle(gcmd)
+        pf = load_print_file()
+        filename, info = self.pm['filename'], self.pm['info']
+        mode = gcmd.get('MODE').upper()
+        if info is None or mode not in pf.MODES:
+            raise gcmd.error(
+                "Choose the print mode with SNAPMAKER_PRINT_MODE first")
+        reason = pf.check_mode(info, mode)
+        if reason:
+            raise gcmd.error(reason)
+        self.pm['info'] = None
+        if mode == info['mode']:
+            self.gcode.run_script_from_command(
+                'SDCARD_PRINT_FILE FILENAME="%s"' % (filename,))
+            return
+        offset = pf.x_offset(info, mode)
+        if not offset or info['layer_pos'] is None:
+            self.gcode.run_script_from_command(
+                'SDCARD_PRINT_FILE FILENAME="%s" MODE=%s X_OFFSET=%.2f'
+                % (filename, mode, offset))
+            return
+        # The model moves from its first layer on: a copy of the file
+        gcmd.respond_info("Preparing the print...")
+        gcodes = self._pm_gcodes()
+        def done(copy):
+            if copy is None:
+                raise self.printer.command_error(
+                    "The print could not be prepared")
+            self.gcode.run_script(
+                'SDCARD_PRINT_FILE FILENAME="%s" MODE=%s X_OFFSET=0'
+                % (copy, mode))
+        self._pm_thread(lambda: pf.make_copy(filename, info['layer_pos'],
+                                             offset, gcodes), done)
 
 def load_config(config):
     return SnapmakerJ1(config)

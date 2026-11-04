@@ -149,6 +149,11 @@ The purge line of the start G-code stays where it is and does not count
 its first layer on.  For that the printer prints a copy of the file from
 the folder `snapmaker_j1/print_mode` (only the last one is kept).
 
+In Mainsail or Fluidd, the macro **SNAPMAKER_PRINT_MODE** opens the same
+choice as a dialog for the file uploaded last (or the one given as
+`FILENAME`); a print started there without it prints in the mode of the
+file.
+
 Reading a large file takes a few seconds; the mode buttons work once it
 is done.  Before the print starts, the dialog warns if the file retracts
 more than 2 mm (risk of a clogged nozzle).

@@ -16,6 +16,7 @@
 # that still is Mainsail's default.  KlipperScreen checks this when
 # Klipper becomes ready.
 import logging
+import os
 
 NAMESPACE = "mainsail"
 GROUP_ID = "snapmaker-j1"
@@ -34,14 +35,20 @@ GROUP = {
     "showInStandby": True,
     "showInPrinting": True,
     "showInPause": True,
+    # Only what makes sense away from the printer: loading filament or
+    # the noise mode need someone at the printer, its touch screen does it
     "macros": [
         _macro(1, "SNAPMAKER_PRINT_MODE"),
-        _macro(2, "SNAPMAKER_LOAD_FILAMENT", pause=True),
-        _macro(3, "SNAPMAKER_UNLOAD_FILAMENT", pause=True),
-        _macro(4, "SNAPMAKER_PAUSE_HEAT", standby=False, pause=True),
-        _macro(5, "SNAPMAKER_NOISE_MODE", printing=True),
+        _macro(2, "SNAPMAKER_PAUSE_HEAT", standby=False, pause=True),
     ],
 }
+# Macros of the group as an earlier version set it up: replaced by the
+# current ones unless the user changed the group
+OLD_MACROS = [
+    ["SNAPMAKER_PRINT_MODE", "SNAPMAKER_LOAD_FILAMENT",
+     "SNAPMAKER_UNLOAD_FILAMENT", "SNAPMAKER_PAUSE_HEAT",
+     "SNAPMAKER_NOISE_MODE"],
+]
 
 
 PANEL = "macrogroup_" + GROUP_ID
@@ -71,7 +78,35 @@ def _layout(name):
     return panels
 
 
+# Mainsail's own theme file: the macro dialogs as lists (mainsail.css).
+# Written while it is missing or still the printer's (its first line)
+THEME = os.path.expanduser("~/printer_data/config/.theme/custom.css")
+CSS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                   "mainsail.css")
+
+
+def _theme():
+    try:
+        with open(CSS) as f:
+            css = f.read()
+        mark = css.splitlines()[0]
+        if os.path.exists(THEME):
+            with open(THEME) as f:
+                current = f.read()
+            if current == css or not current.startswith(mark):
+                return
+        os.makedirs(os.path.dirname(THEME), exist_ok=True)
+        with open(THEME + ".tmp", "w") as f:
+            f.write(css)
+        os.replace(THEME + ".tmp", THEME)
+        logging.info("Mainsail: macro dialogs as lists (%s)", THEME)
+    except (IOError, OSError, IndexError):
+        logging.exception("Mainsail theme")
+
+
 def setup(screen):
+    _theme()
+
     def got(response, method, params):
         result = response.get("result")
         if result is None:
@@ -84,8 +119,15 @@ def setup(screen):
             logging.info("Mainsail: adding the Snapmaker J1 macro group")
             _post(screen, "macros.macrogroups." + GROUP_ID, GROUP)
             _post(screen, "macros.mode", "expert")
-        elif GROUP_ID not in (macros.get("macrogroups") or {}):
-            return False
+        else:
+            group = (macros.get("macrogroups") or {}).get(GROUP_ID)
+            if group is None:
+                return False
+            names = [m.get("name") for m in sorted(
+                group.get("macros") or [], key=lambda m: m.get("pos", 0))]
+            if names in OLD_MACROS:
+                logging.info("Mainsail: updating the Snapmaker J1 group")
+                _post(screen, "macros.macrogroups." + GROUP_ID, GROUP)
         dashboard = value.get("dashboard") or {}
         for name in LAYOUTS:
             if name not in dashboard:

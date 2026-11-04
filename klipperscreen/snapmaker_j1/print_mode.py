@@ -59,7 +59,7 @@ def patch_gcodes(screen, panel_class):
         main_box.pack_start(label, False, False, 0)
 
         # Print mode: the file's, until the user picks another
-        state = {"info": None, "quick": None, "mode": None, "buttons": {}}
+        state = {"info": None, "mode": None, "buttons": {}}
         mode_box = Gtk.Box(spacing=5, hexpand=True)
         for mode in MODES:
             b = self._gtk.Button(None, _(MODE_NAMES[mode]), "color3")
@@ -98,10 +98,6 @@ def patch_gcodes(screen, panel_class):
             callback=lambda p: self._add_print_image(p, inside_box,
                                                      filename))
 
-        def checked(quick):
-            state["quick"] = quick
-            return False
-
         def analyzed(info):
             state["info"] = info
             status.set_text("" if info else _("The file could not be read."))
@@ -113,7 +109,6 @@ def patch_gcodes(screen, panel_class):
         def work():
             path = os.path.join(GCODES, filename)
             try:
-                GLib.idle_add(checked, pf.quick_check(path))
                 info = pf.analyze(path)
             except (IOError, OSError, ValueError):
                 logging.exception("Reading %s failed", filename)
@@ -154,36 +149,9 @@ def _response(dialog, response_id, panel, filename, state):
         return
     if response_id != Gtk.ResponseType.OK:
         return
-    checked = state["info"] or state["quick"]
-    if checked is not None and pf.retraction_too_long(checked):
-        _ask_retraction(panel, filename, state)
-        return
+    # The retraction warning comes from the printer with the nozzle
+    # check (SDCARD_PRINT_FILE), as for a print started elsewhere
     _start(panel, filename, state)
-
-
-def _ask_retraction(panel, filename, state):
-    buttons = [
-        {"name": _("Print Anyway"), "response": Gtk.ResponseType.OK,
-         "style": "dialog-warning"},
-        {"name": _("Cancel"), "response": Gtk.ResponseType.CANCEL,
-         "style": "dialog-secondary"},
-    ]
-    label = Gtk.Label(
-        label=_("The retraction distance set for this print exceeds the"
-                " recommended range (0-2 mm), which might cause nozzle"
-                " clogging during printing. Adjust it in the slicer before"
-                " printing."),
-        wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR)
-    label.set_halign(Gtk.Align.CENTER)
-    label.set_valign(Gtk.Align.CENTER)
-
-    def response(dialog, response_id):
-        panel._gtk.remove_dialog(dialog)
-        if response_id == Gtk.ResponseType.OK:
-            _start(panel, filename, state)
-
-    panel._gtk.Dialog(_("Inappropriate Retraction Distance"), buttons,
-                      label, response)
 
 
 def _start(panel, filename, state):

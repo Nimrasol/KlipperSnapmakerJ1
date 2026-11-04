@@ -150,17 +150,22 @@ its first layer on.  For that the printer prints a copy of the file from
 the folder `snapmaker_j1/print_mode` (only the last one is kept).
 
 In Mainsail or Fluidd, the macro **SNAPMAKER_PRINT_MODE** opens the same
-choice as a dialog for the file uploaded last (or the one given as
-`FILENAME`); a print started there without it prints in the mode of the
-file.  Mainsail shows it in the panel **Snapmaker J1** at the top of its
-dashboard, with filament load and unload, the noise mode and, while
-paused, heating the print again.  The printer sets this panel up once,
-as long as the macros of Mainsail are not set up otherwise (Mainsail
-then uses its expert macro mode; Settings → Macros switches back).
+choice as a dialog: first the file (a list of the newest, eight per page,
+with print time and filament), then the mode; a print started without it
+prints in the mode of the file.  Mainsail shows it in the panel
+**Snapmaker J1** at the top of its dashboard (while paused, also heating
+the print again).  The printer sets this panel up once, as long as the
+macros of Mainsail are not set up otherwise (Mainsail then uses its
+expert macro mode; Settings → Macros switches back), and shows the
+dialogs of macros as lists (`.theme/custom.css` in the configuration,
+unless it holds a theme of your own).
 
 Reading a large file takes a few seconds; the mode buttons work once it
-is done.  Before the print starts, the dialog warns if the file retracts
-more than 2 mm (risk of a clogged nozzle).
+is done.
+
+Like the nozzle diameter check, every print start asks first if the file
+retracts more than 2 mm (risk of a clogged nozzle): **Cancel** or
+**Continue Anyway**.
 
 During the print, the print page shows the mode next to the elapsed time,
 and the part fans of both toolheads.

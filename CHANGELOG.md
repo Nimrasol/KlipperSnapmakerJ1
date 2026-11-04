@@ -23,12 +23,14 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   toolhead only; duplication narrower than 160 mm, mirror than 150 mm).
   The purge line of the start G-code stays in place and does not count.
   In Mainsail and Fluidd the macro `SNAPMAKER_PRINT_MODE` offers the same
-  choice for the file uploaded last; Mainsail gets a panel **Snapmaker
-  J1** with it at the top of the dashboard (unless its macros are set up
-  already).
-  The `M605` of the file then does not change the chosen mode.
-- **Retraction warning:** the print dialog warns if the file retracts
-  more than 2 mm, as the stock display.
+  choice, with a list of the newest files to choose from; Mainsail gets a
+  panel **Snapmaker J1** with it at the top of the dashboard (unless its
+  macros are set up already).  The `M605` of the file then does not
+  change the chosen mode.
+- **Retraction warning:** a print of a file that retracts more than 2 mm
+  (OrcaSlicer: printer or filament profile) asks first, as on the stock
+  display - in the same dialog as the nozzle diameter check, for every
+  print start (touch screen, web interface, slicer).
 
 ## v1.2.0 (2026-10-31)
 

@@ -54,6 +54,10 @@ PRINT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                           '..', '..', 'scripts', 'snapmaker_j1_print_file.py')
 MODE_NAMES = {'FULL_CONTROL': 'IDEX', 'BACKUP': 'Backup',
               'DUPLICATION': 'Duplication', 'MIRROR': 'Mirror'}
+# Retraction distance above which a print asks first (stock)
+MAX_RETRACTION = 2.
+# Files offered by SNAPMAKER_PRINT_MODE (the newest first)
+PM_FILES = 8
 
 def load_print_file():
     spec = importlib.util.spec_from_file_location('snapmaker_j1_print_file',
@@ -165,7 +169,8 @@ class SnapmakerJ1:
                                      self._bed_feedback_handler)
         self.nozzle_check = {'filename': None, 'mismatch': False,
                              'file': [None, None], 'machine': [None, None],
-                             'mode': None, 'x_offset': 0.}
+                             'retraction': 0., 'mode': None,
+                             'x_offset': 0.}
         self.print_state = None
         # PID calibration in progress (heater, ControlAutoTune) and its
         # abort request, which comes through the API while the calibration
@@ -628,11 +633,23 @@ class SnapmakerJ1:
             if (machine[i] is None
                 or abs(machine[i] - file_diameters[i]) > NOZZLE_TOLERANCE):
                 mismatch = True
+        # Stock: a retraction above 2 mm gets a warning in the same way
+        # (read from the slicer settings at the start and end of the file)
+        retraction = [None, None]
+        try:
+            sdcard = self.printer.lookup_object('virtual_sdcard')
+            retraction = load_print_file().quick_check(os.path.join(
+                sdcard.sdcard_dirname, filename.lstrip('/')))['retraction']
+        except (IOError, OSError):
+            logging.exception("Reading the retraction of %s", filename)
+        too_long = [r for r in retraction
+                    if r is not None and r > MAX_RETRACTION]
         # The print mode chosen on the touch screen, for the print after
         # the dialog
         mode = gcmd.get('MODE', None)
         self.nozzle_check = {'filename': filename, 'mismatch': mismatch,
                              'file': file_diameters, 'machine': machine,
+                             'retraction': max(too_long) if too_long else 0.,
                              'mode': mode.upper() if mode else None,
                              'x_offset': gcmd.get_float('X_OFFSET', 0.)}
         if mismatch:
@@ -649,9 +666,10 @@ class SnapmakerJ1:
     # a thread, the dialog (action:prompt) follows from the reactor
     def _pm_gcodes(self):
         return self.printer.lookup_object('virtual_sdcard').sdcard_dirname
-    def _pm_newest(self):
+    def _pm_files(self):
+        # All print files, the newest first (relative to the gcodes folder)
         gcodes = self._pm_gcodes()
-        newest = None
+        found = []
         for root, dirs, files in os.walk(gcodes):
             top = os.path.normpath(root) == os.path.normpath(gcodes)
             # Not the calibration prints and the copies of this add-on
@@ -661,10 +679,13 @@ class SnapmakerJ1:
                 if not name.lower().endswith(('.gcode', '.gco', '.g')):
                     continue
                 path = os.path.join(root, name)
-                mtime = os.path.getmtime(path)
-                if newest is None or mtime > newest[0]:
-                    newest = (mtime, os.path.relpath(path, gcodes))
-        return newest[1].replace(os.sep, '/') if newest else None
+                rel = os.path.relpath(path, gcodes).replace(os.sep, '/')
+                # A name the dialog buttons cannot carry
+                if '"' in rel or '|' in rel:
+                    continue
+                found.append((os.path.getmtime(path), rel))
+        found.sort(reverse=True)
+        return [rel for mtime, rel in found]
     def _pm_check_idle(self, gcmd):
         sdcard = self.printer.lookup_object('virtual_sdcard')
         if sdcard.is_active() or self.pm['busy']:
@@ -696,9 +717,41 @@ class SnapmakerJ1:
         pf = load_print_file()
         filename = gcmd.get('FILENAME', '').strip().lstrip('/')
         if not filename:
-            filename = self._pm_newest()
-            if filename is None:
+            # First the file: a page of the files, the newest first (the
+            # theme of the web interface shows them as a list)
+            files = self._pm_files()
+            if not files:
                 raise gcmd.error("No print file found")
+            page = gcmd.get_int('PAGE', 0, minval=0)
+            pages = (len(files) + PM_FILES - 1) // PM_FILES
+            page = min(page, pages - 1)
+            gcodes = self._pm_gcodes()
+            title = "Which file do you want to print?"
+            if pages > 1:
+                title += " (page %d of %d)" % (page + 1, pages)
+            lines = ["prompt_begin Print Mode", "prompt_text " + title]
+            for f in files[page * PM_FILES:(page + 1) * PM_FILES]:
+                lines.append('prompt_button %s|_SNAPMAKER_PRINT_MODE_DIALOG'
+                             ' FILENAME="%s"|secondary'
+                             % (pf.short_name(f, 60), f))
+                try:
+                    info = pf.summary(os.path.join(gcodes, f))
+                except (IOError, OSError):
+                    info = ""
+                lines.append("prompt_text " + (info or " "))
+            if page > 0:
+                lines.append("prompt_footer_button Newer|"
+                             "_SNAPMAKER_PRINT_MODE_DIALOG PAGE=%d"
+                             % (page - 1,))
+            if page + 1 < pages:
+                lines.append("prompt_footer_button Older|"
+                             "_SNAPMAKER_PRINT_MODE_DIALOG PAGE=%d"
+                             % (page + 1,))
+            lines += ["prompt_footer_button Cancel"
+                      "|_SNAPMAKER_PRINT_MODE_CANCEL", "prompt_show"]
+            self._pm_prompt(lines)
+            return
+        self._pm_prompt(["prompt_end"])
         path = os.path.join(self._pm_gcodes(), filename)
         if not os.path.isfile(path):
             raise gcmd.error("Print file %s not found" % (filename,))
@@ -722,13 +775,9 @@ class SnapmakerJ1:
                 buttons.append(
                     "prompt_button %s|_SNAPMAKER_PRINT_MODE_START MODE=%s|%s"
                     % (MODE_NAMES[mode], mode, style))
-            if pf.retraction_too_long(info):
-                lines.append(
-                    "prompt_text Warning: the retraction distance of this"
-                    " file exceeds the recommended range (0-2 mm), which"
-                    " might cause nozzle clogging.")
             lines += ["prompt_button_group_start"] + buttons + [
                 "prompt_button_group_end",
+                "prompt_footer_button Other File|_SNAPMAKER_PRINT_MODE_DIALOG",
                 "prompt_footer_button Cancel|_SNAPMAKER_PRINT_MODE_CANCEL",
                 "prompt_show"]
             self._pm_prompt(lines)

@@ -151,7 +151,7 @@ E0 111, E1 011 (1 = high).
 | Motion, IDEX full control, duplication, mirror | `cartesian` + `[dual_carriage]`, `SET_DUAL_CARRIAGE`, `SYNC_EXTRUDER_MOTION`; `M605` macro | macros |
 | Backup mode (continue on the other toolhead after a runout) | runout macro switches the tool and remaps T/M104/M106 | macros |
 | Print mode from the file header (`;Extruder Mode:`) | `SNAPMAKER_FILE_MODE` from `SDCARD_PRINT_FILE` | `snapmaker_j1` |
-| Print mode chosen in the print dialog, print moved in X, checks of the file (one toolhead, width), retraction warning | `SDCARD_PRINT_FILE MODE= X_OFFSET=`, `M605` of the file ignored meanwhile | KlipperScreen add-on (`print_mode.py`), macros |
+| Print mode chosen in the print dialog, print moved in X, checks of the file (one toolhead, width) | `SDCARD_PRINT_FILE MODE= X_OFFSET=`, `M605` of the file ignored meanwhile | KlipperScreen add-on (`print_mode.py`), macros |
 | Homing order Z, X, Y and tool restore | `[homing_override]` | macros |
 | Tool change with Z hop and parking | `T0`/`T1` macros | macros |
 | TMC2209 behind a UART mux | `[tmc2209]` with `select_pins` | none |
@@ -165,7 +165,7 @@ E0 111, E1 011 (1 = high).
 | Bed relay self check | continuous feedback monitoring of PA12 | `snapmaker_j1` |
 | Board revision detection | ADC check against the configured revision | `snapmaker_j1` |
 | Nozzle type detection | ADC classification, `SNAPMAKER_QUERY_HARDWARE` | `snapmaker_j1` |
-| Nozzle diameter check before a print ("Inconsistent Nozzle Diameter") | `SNAPMAKER_CHECK_NOZZLES` from `SDCARD_PRINT_FILE`, `action:prompt` dialog | `snapmaker_j1` |
+| Nozzle diameter check and retraction warning (above 2 mm) before a print ("Inconsistent Nozzle Diameter", "Inappropriate Retraction Distance") | `SNAPMAKER_CHECK_NOZZLES` from `SDCARD_PRINT_FILE`, `action:prompt` dialog | `snapmaker_j1` |
 | Missing hotend ("nozzle loss") | heater blocked until the hotend is back (shutdown while printing) | `snapmaker_j1` |
 | Fans (part, hotend, electronics) | `fan_generic`, `heater_fan`, `temperature_fan` | none |
 | Case light (M355), dimmed after a time without touch | `[output_pin]`, "Light" panel | macros, KlipperScreen add-on |

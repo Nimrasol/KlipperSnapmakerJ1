@@ -74,23 +74,42 @@ MOVE = re.compile(rb"\nG[01][ \t][^\n;]*?X(-?[0-9]*\.?[0-9]+)([^\n;]*)")
 TOOL = re.compile(rb"\nT([01])\b")
 M605 = re.compile(rb"\nM605[ \t][^\n;]*?S([0-9])")
 LAYER = re.compile(rb"\n;(?:LAYER_CHANGE|LAYER:0)\b")
+# OrcaSlicer: the retraction of the printer profile, and that of the
+# filament profiles ("nil" where they keep the printer's), which wins
 COMMENT = re.compile(
     rb"\n;[ \t]*(Extruder Mode|Extruder [01] Retraction Distance)[ \t]*:"
-    rb"([^\n]*)|\n;[ \t]*retraction_length[ \t]*=([^\n]*)")
+    rb"([^\n]*)|\n;[ \t]*(filament_retraction_length|retraction_length)"
+    rb"[ \t]*=([^\n]*)")
 
 
 def _comments(info, chunk):
     # Mode header and retraction distances; returns the header mode
     mode = None
-    for key, value, orca in COMMENT.findall(chunk):
-        if orca:
-            for i, v in enumerate(orca.split(b",")[:2]):
-                info["retraction"][i] = _float(v.decode())
+    for key, value, orca_key, orca in COMMENT.findall(chunk):
+        if orca_key:
+            # Kept apart, merged by _retraction()
+            field = ("filament_retraction"
+                     if orca_key == b"filament_retraction_length"
+                     else "orca_retraction")
+            info[field] = [_float(v.decode())
+                           for v in orca.split(b",")[:2]]
         elif key == b"Extruder Mode":
             mode = HEADER_MODES.get(value.decode().strip()) or mode
         else:
             info["retraction"][int(key[9:10])] = _float(value.decode())
     return mode
+
+
+def _retraction(info):
+    # The retraction of each toolhead: the filament profile's, else the
+    # printer profile's (OrcaSlicer), else the header's (Luban)
+    printer = info.pop("orca_retraction", None) or []
+    filament = info.pop("filament_retraction", None) or []
+    for i in range(2):
+        for values in (filament, printer):
+            if i < len(values) and values[i] is not None:
+                info["retraction"][i] = values[i]
+                break
 
 
 def quick_check(path):
@@ -108,6 +127,7 @@ def quick_check(path):
             tail = b"\n" + f.read()
     _comments(info, head)
     _comments(info, tail)
+    _retraction(info)
     return info
 
 
@@ -161,6 +181,7 @@ def analyze(path):
             if not data:
                 break
     info["mode"] = header_mode or m605_mode or "FULL_CONTROL"
+    _retraction(info)
     return info
 
 
@@ -274,3 +295,52 @@ def make_copy(filename, layer_pos, offset, gcodes=None):
             dst.write(data)
     os.replace(dest + ".tmp", dest)
     return name
+
+
+SUMMARY = re.compile(
+    rb"\n;[ \t]*(?:estimated printing time \(normal mode\)[ \t]*=|"
+    rb"Estimated Print Time[ \t]*:)[ \t]*([^\n]*)"
+    rb"|\n;[ \t]*filament used \[mm\][ \t]*=[ \t]*([0-9.]+)")
+
+
+def summary(path):
+    """Print time and filament length of a file for a list entry, from
+    the slicer comments at its start and end ("" when there are none)"""
+    with open(path, "rb") as f:
+        data = b"\n" + f.read(HEAD_SIZE)
+        f.seek(0, os.SEEK_END)
+        size = f.tell()
+        if size > HEAD_SIZE:
+            f.seek(max(HEAD_SIZE, size - TAIL_SIZE))
+            data += b"\n" + f.read()
+    time = length = None
+    for t, mm in SUMMARY.findall(data):
+        if t and time is None:
+            t = t.decode("utf-8", "replace").strip()
+            # Luban writes seconds
+            if re.fullmatch(r"[0-9.]+", t):
+                s = int(float(t))
+                t = ("%dh %dm" % (s // 3600, s // 60 % 60) if s >= 3600
+                     else "%dm %ds" % (s // 60, s % 60))
+            time = t
+        if mm and length is None:
+            length = float(mm)
+    parts = []
+    if time:
+        parts.append("Print time: " + time)
+    if length:
+        parts.append("Filament: %.0f mm" % length)
+    return ", ".join(parts)
+
+
+def short_name(name, width=30):
+    """A file name that fits a button of the dialog"""
+    base = os.path.basename(name)
+    for ext in (".gcode", ".gco", ".g"):
+        if base.lower().endswith(ext):
+            base = base[:-len(ext)]
+            break
+    if len(base) > width:
+        keep = (width - 1) // 2
+        base = base[:keep] + "\u2026" + base[-(width - 1 - keep):]
+    return base

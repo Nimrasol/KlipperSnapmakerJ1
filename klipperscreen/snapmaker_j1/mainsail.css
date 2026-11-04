@@ -1,0 +1,56 @@
+/* KlipperSnapmakerJ1: macro dialogs as lists (written by the printer)
+ *
+ * Mainsail shows the dialogs of macros (action:prompt, for example the
+ * file choice of SNAPMAKER_PRINT_MODE) as centered buttons.  This shows
+ * them as a list instead: each button a row, the text line after it (the
+ * print time and filament of a file) under it.  Delete this file, or
+ * remove its first line, to keep your own theme: the printer then leaves
+ * it alone.
+ */
+.macro_prompt-dialog .v-card__text {
+    max-height: 430px;
+    overflow-y: auto;
+}
+.macro_prompt-dialog .v-card__text .col.text-center {
+    text-align: left !important;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.macro_prompt-dialog .v-card__text .v-btn.v-btn {
+    display: flex;
+    width: 100%;
+    margin: 0 !important;
+    justify-content: flex-start;
+    height: auto !important;
+    min-height: 0;
+    padding: 10px 12px 2px !important;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: none !important;
+}
+.macro_prompt-dialog .v-card__text .v-btn.secondary {
+    background-color: transparent !important;
+}
+.macro_prompt-dialog .v-card__text .v-btn.secondary:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.macro_prompt-dialog .v-card__text .v-btn .v-btn__content {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+    word-break: break-all;
+}
+/* The text line under a button: its details */
+.macro_prompt-dialog .v-card__text .row:has(.v-btn) + .row:has(p) .col {
+    padding-top: 0;
+    padding-bottom: 10px;
+    padding-left: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.macro_prompt-dialog .v-card__text .row:has(.v-btn) + .row:has(p) p {
+    font-size: 13px;
+    opacity: 0.7;
+}

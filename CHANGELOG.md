@@ -10,12 +10,14 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
-## Unreleased
+## v1.3.1 (2026-11-04)
 
 - **Saving the Z offset works:** **Save** next to the Z offset in Mainsail
   (`Z_OFFSET_APPLY_ENDSTOP`, `Z_OFFSET_APPLY_PROBE`) failed with a
   conflict in `printer.cfg`.  It now stores the offset in the Z origin, as
   the calibration does; during a print when the print ends.
+- **Manual:** the print area of the J1 is 324 x 200 mm, the center of the
+  bed at X 162, Y 100.
 
 ## v1.3.0 (2026-11-04)
 

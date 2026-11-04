@@ -245,7 +245,7 @@ screens.
 
 ## Status
 
-**Version 1.3.0** ([changelog](CHANGELOG.md)), with the
+**Version 1.3.1** ([changelog](CHANGELOG.md)), with the
 [installation package](https://github.com/Nimrasol/KlipperSnapmakerJ1-os/releases/latest).
 Runs on the J1, with Klipper, Moonraker and
 KlipperScreen on the display module: printing, the calibration menu and

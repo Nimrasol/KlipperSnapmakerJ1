@@ -278,11 +278,20 @@ class SnapmakerJ1PowerLoss:
         relpath = os.path.relpath(path, sdcard_dir)
         self.resuming = True
         try:
-            gcode.run_script_from_command("M23 %s\nM26 S%d"
-                                          % (relpath, state['file_position']))
+            # Not M23: it only finds files in the top folder, and a print
+            # may be in a subfolder (the moved copy of a print mode)
+            sdcard._reset_file()
+            sdcard._load_file(gcmd, relpath, check_subdirs=True)
+            gcode.run_script_from_command("M26 S%d"
+                                          % (state['file_position'],))
+        except self.printer.command_error:
+            # The nozzles stand hot on the print: do not leave them so.
+            # The state stays, the print can be resumed again
+            gcode.run_script_from_command("TURN_OFF_HEATERS")
+            raise
         finally:
             self.resuming = False
-        self.pending = state
+            self.pending = state
         self.checkpoints = []
         self.last_saved_z = None
         gcode.run_script_from_command("M24")

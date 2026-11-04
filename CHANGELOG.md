@@ -31,6 +31,8 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   (OrcaSlicer: printer or filament profile) asks first, as on the stock
   display: a dialog of its own after the nozzle diameter check, for
   every print start (touch screen, web interface, slicer).
+- **Power loss recovery** also for a print file in a subfolder, such as
+  the moved copy of a print mode ("Unable to open file" before).
 
 ## v1.2.0 (2026-10-31)
 

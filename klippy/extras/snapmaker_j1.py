@@ -56,8 +56,9 @@ MODE_NAMES = {'FULL_CONTROL': 'IDEX', 'BACKUP': 'Backup',
               'DUPLICATION': 'Duplication', 'MIRROR': 'Mirror'}
 # Retraction distance above which a print asks first (stock)
 MAX_RETRACTION = 2.
-# Files offered by SNAPMAKER_PRINT_MODE (the newest first)
-PM_FILES = 8
+# Files per page of SNAPMAKER_PRINT_MODE (the newest first); more do not
+# fit the dialog of Mainsail without scrolling
+PM_FILES = 6
 
 def load_print_file():
     spec = importlib.util.spec_from_file_location('snapmaker_j1_print_file',

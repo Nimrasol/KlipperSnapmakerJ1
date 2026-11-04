@@ -254,10 +254,17 @@ nozzle_id_pin_t1: PA6
 Commands: `SNAPMAKER_QUERY_HARDWARE` reports the detected board revision
 and nozzle types; `SNAPMAKER_FILE_MODE FILENAME=<file>` selects the IDEX
 mode from the file header; `SNAPMAKER_CHECK_NOZZLES FILENAME=<file>`
-compares the nozzle diameters of a file with the installed nozzles.
+compares the nozzle diameters of a file with the installed nozzles and
+reads its retraction distance.  The macro `SNAPMAKER_PRINT_MODE
+[FILENAME=<file>]` offers the print modes of a file for the web interface
+(`action:prompt`), with the checks of `scripts/snapmaker_j1_print_file.py`
+that the print dialog of the touch screen uses too; the KlipperScreen
+add-on sets up its Mainsail panel and dialog look (`web_panel.py`,
+`mainsail.css`).
 Status: `hardware_version`, `detected_hardware_version`, `nozzle_t0`,
 `nozzle_t1` (`material`, `diameter`, `adc_mv`), `nozzle_check`
-(`filename`, `mismatch`, `file`, `machine`), `bed_feedback`.
+(`filename`, `mismatch`, `file`, `machine`, `retraction`, `mode`,
+`x_offset`), `bed_feedback`.
 
 Like the stock display, `SDCARD_PRINT_FILE` asks before printing a file
 made for other nozzle diameters.  The diameters come from the header

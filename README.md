@@ -92,8 +92,10 @@ results are stored at once, without a restart.
 ### Two toolheads, all IDEX modes
 
 Full control, duplication, mirror and backup mode, taken from the print
-file.  Both nozzles are checked against the file before the print
-starts.
+file or chosen before the print, on the touch screen or in the browser:
+the printer moves the model to where the mode needs it.  Before the print
+starts, both nozzles are checked against the file, and too long a
+retraction gets a warning.
 
 <table>
 <tr>
@@ -101,8 +103,8 @@ starts.
 <td><img src="docs/manual/nozzle-check.png" width="420" alt="Nozzle diameter check"></td>
 </tr>
 <tr>
-<td>Print files with thumbnail and slicer data</td>
-<td>Nozzle check before the print</td>
+<td>Print files with thumbnail, slicer data and the print mode</td>
+<td>Checks before the print</td>
 </tr>
 </table>
 
@@ -130,8 +132,8 @@ interrupted by a power loss.
 </p>
 
 Mainsail runs on the printer: open `http://snapmaker-j1.local`.  The
-dialogs of the printer appear there too, and the slicer uploads and
-starts prints directly.
+dialogs of the printer appear there too, the panel **Snapmaker J1**
+chooses the print mode, and the slicer uploads and starts prints directly.
 
 **See every screen in the [user manual](docs/Manual.md).**
 

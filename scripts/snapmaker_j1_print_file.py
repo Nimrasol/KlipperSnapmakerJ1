@@ -329,7 +329,9 @@ def summary(path):
     if time:
         parts.append("Print time: " + time)
     if length:
-        parts.append("Filament: %.0f mm" % length)
+        # As in the file list of Mainsail
+        parts.append("Filament: %.2f m" % (length / 1000.) if length >= 1000.
+                     else "Filament: %.0f mm" % length)
     return ", ".join(parts)
 
 

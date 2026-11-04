@@ -104,7 +104,8 @@ slicer.  You can sort them by name, date or size.  The folder
 
 Tapping a file shows its details: layer height, filament, nozzle
 diameter, slicer, estimated time and the duration of the last print.
-**Print** starts it, **Delete** removes the file.
+The buttons at the top choose the [print mode](#print-modes).  **Print**
+starts the file, **Delete** removes it.
 
 ### Nozzle diameter check
 
@@ -119,6 +120,21 @@ differ, it asks before printing:
 
 The nozzles are detected by the identification resistor in the hotend.
 The same dialog also appears in Mainsail and Fluidd.
+
+### Retraction warning
+
+![Inappropriate retraction distance](manual/retraction-check.png)
+
+As on the stock display, a file that retracts more than 2 mm asks first,
+because that can clog the nozzle.  The dialog follows the nozzle diameter
+check, for every print start (touch screen, web interface, slicer):
+
+- **Cancel:** the print is not started.
+- **Continue Anyway:** the print starts.
+
+The value comes from the slicer settings in the file; in OrcaSlicer, the
+retraction of the filament profile counts if it sets one, otherwise that
+of the printer profile.
 
 ### Print modes
 
@@ -149,23 +165,9 @@ The purge line of the start G-code stays where it is and does not count
 its first layer on.  For that the printer prints a copy of the file from
 the folder `snapmaker_j1/print_mode` (only the last one is kept).
 
-In Mainsail or Fluidd, the macro **SNAPMAKER_PRINT_MODE** opens the same
-choice as a dialog: first the file (a list of the newest, eight per page,
-with print time and filament), then the mode; a print started without it
-prints in the mode of the file.  Mainsail shows it in the panel
-**Snapmaker J1** at the top of its dashboard (while paused, also heating
-the print again).  The printer sets this panel up once, as long as the
-macros of Mainsail are not set up otherwise (Mainsail then uses its
-expert macro mode; Settings → Macros switches back), and shows the
-dialogs of macros as lists (`.theme/custom.css` in the configuration,
-unless it holds a theme of your own).
-
 Reading a large file takes a few seconds; the mode buttons work once it
-is done.
-
-Like the nozzle diameter check, every print start asks first if the file
-retracts more than 2 mm (risk of a clogged nozzle): **Cancel** or
-**Continue Anyway**.
+is done.  In the web interface, the [print mode](#print-mode-in-the-browser)
+is chosen with a macro.
 
 During the print, the print page shows the mode next to the elapsed time,
 and the part fans of both toolheads.
@@ -720,7 +722,8 @@ always show the same state.
 
 ![Mainsail dashboard](manual/web-dashboard.png)
 
-The dashboard shows the printer state with the recent files, the
+The dashboard shows the printer state with the recent files, the panel
+**Snapmaker J1** with the [print mode](#print-mode-in-the-browser), the
 temperatures of **Extruder** (left nozzle), **Extruder1** (right nozzle)
 and **Heater Bed** with their history, the toolhead and the console.
 
@@ -750,23 +753,49 @@ and **Heater Bed** with their history, the toolhead and the console.
 
 ![Nozzle diameter dialog in Mainsail](manual/web-prompt.png)
 
-The [nozzle diameter check](#nozzle-diameter-check) at the start of a
-print and the [missing hotend](#missing-hotend) message appear in the
-browser as well as on the touch screen; answering in one place closes the
+The [nozzle diameter check](#nozzle-diameter-check) and the
+[retraction warning](#retraction-warning) at the start of a print and the
+[missing hotend](#missing-hotend) message appear in the browser as well as on the touch screen; answering in one place closes the
 dialog in the other.  The filament runout and change dialog and the
 [power loss recovery](#power-loss-recovery) are shown on the touch
 screen only: in the browser, a paused print is continued with
 **Resume**.
 
+### Print mode in the browser
+
+<img src="manual/web-panel.png" width="474">
+
+A print started with **Upload & Print** or in **G-Code Files** prints in
+the mode of the file.  To choose another mode, tap
+**SNAPMAKER PRINT MODE** in the panel **Snapmaker J1**.  While a print is
+paused, the panel also offers **SNAPMAKER PAUSE HEAT** (heat the print
+again).
+
+<table>
+<tr><td><img src="manual/web-print-mode-files.png" width="400"><br>1. Choose the file: the newest first, six per page (<b>Older</b> and <b>Newer</b> turn the pages).</td>
+<td><img src="manual/web-print-mode.png" width="400"><br>2. Choose the mode: the mode of the file is highlighted, a mode that does not fit the file is listed with the reason.  The print starts with this tap.</td></tr>
+</table>
+
+The checks and the moving of the print are those of the
+[touch screen](#print-modes).  In Fluidd, the macro
+`SNAPMAKER_PRINT_MODE` opens the same dialogs.
+
+The printer sets the panel up once, as long as the macros of Mainsail are
+not set up otherwise: Mainsail then uses its expert macro mode, without
+the long **Macros** panel (**Settings → Macros** switches back).  The
+list look of these dialogs comes from `.theme/custom.css` in the
+configuration, which the printer writes unless it holds a theme of your
+own.
+
 ### Macros
 
-<img src="manual/web-macros.png" width="420">
-
-The **Macros** panel lists the J1 commands, among them:
+All J1 commands can be typed in the console, or be added to a panel in
+**Settings → Macros**, among them:
 
 | Macro | Function |
 | --- | --- |
 | `SNAPMAKER_LOAD_FILAMENT`, `SNAPMAKER_UNLOAD_FILAMENT` | heat a toolhead and load or unload filament (`TOOL=0` or `1`) |
+| `SNAPMAKER_PRINT_MODE` | [choose a file and its print mode](#print-mode-in-the-browser) (`FILENAME=` skips the file list) |
 | `SNAPMAKER_SET_PRINT_MODE` | IDEX mode: full control, duplication, mirror, backup |
 | `SNAPMAKER_NOISE_MODE` | stock noise mode: normal, silent, loud |
 | `SNAPMAKER_SET_PAUSE_STANDBY`, `SNAPMAKER_PAUSE_HEAT` | [pause standby](#pause-standby) and heating a paused print again |
@@ -841,8 +870,8 @@ host with `snapmaker-j1.local`.
 
 | Area | Function |
 | --- | --- |
-| Printing | IDEX, duplication, mirror and backup mode from the file header; tool changes with parking; pause and resume with parking, priming and wiping |
-| Print start | nozzle diameter check against the installed nozzles |
+| Printing | IDEX, duplication, mirror and backup mode from the file or chosen on the touch screen or in the browser, with the model moved in X; tool changes with parking; pause and resume with parking, priming and wiping |
+| Print start | nozzle diameter check against the installed nozzles, retraction warning above 2 mm |
 | Filament | motion sensors on both toolheads, runout and change dialog, load and unload beside the wipers |
 | Power loss | recovery of the interrupted print, offered on the screen at the next start |
 | Calibration | bed leveling, Z offset, XY offset (assisted and manual), offset check, vibration compensation, PID auto tune, build plate thickness |

@@ -10,11 +10,17 @@
 # distance above 2 mm.
 #   - Duplication and mirror need a file that prints with one toolhead and
 #     fits half the bed: narrower than 160 mm (duplication) or 150 mm
-#     (mirror) in X, the purge line included.  Backup needs a file with
-#     one toolhead too.
+#     (mirror) in X.  Backup needs a file with one toolhead too.
 #   - The print is moved in X so that its center is at X 80 (duplication),
 #     75 (mirror), or 150 when a duplication or mirror file prints with one
 #     toolhead.  The mode the file asks for keeps the print where it is.
+# Unlike the stock display, the purge line of the start G-code is not
+# moved and does not count: the OrcaSlicer J1 profile purges from X 137 to
+# 0 (left toolhead), which leaves no room for a model in half the bed.  The
+# print gets a copy of the file with SET_GCODE_OFFSET at the first layer
+# (";LAYER_CHANGE", ";LAYER:0"), in gcodes/snapmaker_j1/print_mode/; the
+# mode itself applies from the start, so both toolheads purge.  A file
+# without a layer mark moves as a whole, purge line included (as stock).
 # The printer side is SDCARD_PRINT_FILE MODE= X_OFFSET=
 # (snapmaker-j1-macros.cfg).
 import logging
@@ -28,6 +34,8 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk, Pango
 
 GCODES = os.path.expanduser("~/printer_data/gcodes")
+# The moved copy of the file to print (one at a time)
+COPY_DIR = "snapmaker_j1/print_mode"
 MODES = ("FULL_CONTROL", "BACKUP", "DUPLICATION", "MIRROR")
 DUAL_MODES = ("DUPLICATION", "MIRROR")
 # Widest print (X range) and its center for the duplication and mirror mode
@@ -64,6 +72,7 @@ TAIL_SIZE = 128 << 10
 MOVE = re.compile(rb"\nG[01][ \t][^\n;]*?X(-?[0-9]*\.?[0-9]+)([^\n;]*)")
 TOOL = re.compile(rb"\nT([01])\b")
 M605 = re.compile(rb"\nM605[ \t][^\n;]*?S([0-9])")
+LAYER = re.compile(rb"\n;(?:LAYER_CHANGE|LAYER:0)\b")
 COMMENT = re.compile(
     rb"\n;[ \t]*(Extruder Mode|Extruder [01] Retraction Distance)[ \t]*:"
     rb"([^\n]*)|\n;[ \t]*retraction_length[ \t]*=([^\n]*)")
@@ -102,19 +111,24 @@ def quick_check(path):
 
 
 def analyze(path):
-    """Read a print file: the mode it asks for, the X range of all
-    extrusion (purge line included), the toolheads it changes to and the
-    retraction distance of each toolhead (None when the file names none).
+    """Read a print file: the mode it asks for, the X range of the
+    extrusion of the model (from the first layer on) and of the whole file
+    (purge line included), where the first layer starts (file offset), the
+    toolheads it changes to and the retraction distance of each toolhead
+    (None when the file names none).
     """
-    info = {"mode": "FULL_CONTROL", "min_x": None, "max_x": None,
+    info = {"mode": "FULL_CONTROL", "layer_pos": None,
+            "range": [None, None], "model_range": [None, None],
             "tools": set(), "retraction": [None, None]}
     header_mode = m605_mode = None
-    min_x = max_x = prev = None
+    state = {"prev": None}
     rest = b"\n"
+    rest_start = -1     # file offset of rest[0]
     with open(path, "rb") as f:
         while True:
             data = f.read(CHUNK)
             chunk = rest + data
+            chunk_start = rest_start
             if data:
                 # The last (maybe cut) line goes with the next chunk
                 cut = chunk.rfind(b"\n")
@@ -122,21 +136,21 @@ def analyze(path):
                     rest = chunk
                     continue
                 chunk, rest = chunk[:cut], chunk[cut:]
-            for x, tail in MOVE.findall(chunk):
-                try:
-                    x = float(x)
-                except ValueError:
-                    continue
-                e = tail.find(b"E")
-                if e >= 0 and tail[e + 1:e + 2] not in (b"-", b""):
-                    for px in (prev, x):
-                        if px is None:
-                            continue
-                        if min_x is None or px < min_x:
-                            min_x = px
-                        if max_x is None or px > max_x:
-                            max_x = px
-                prev = x
+                rest_start = chunk_start + cut
+            if info["layer_pos"] is None:
+                m = LAYER.search(chunk)
+                if m:
+                    info["layer_pos"] = chunk_start + m.start() + 1
+                    _extrusion(chunk[:m.start()], state, info["range"])
+                    # The model does not start where the purge line ended
+                    state["prev"] = None
+                    model = chunk[m.start():]
+                    _extrusion(model, state, info["range"],
+                               info["model_range"])
+                else:
+                    _extrusion(chunk, state, info["range"])
+            else:
+                _extrusion(chunk, state, info["range"], info["model_range"])
             info["tools"].update(int(t) for t in TOOL.findall(chunk))
             if m605_mode is None:
                 m = M605.search(chunk)
@@ -146,8 +160,41 @@ def analyze(path):
             if not data:
                 break
     info["mode"] = header_mode or m605_mode or "FULL_CONTROL"
-    info["min_x"], info["max_x"] = min_x, max_x
     return info
+
+
+def _extrusion(chunk, state, *ranges):
+    # Widen the [min, max] ranges by the X of all extrusion in chunk
+    prev = state["prev"]
+    lo = hi = None
+    for x, tail in MOVE.findall(chunk):
+        try:
+            x = float(x)
+        except ValueError:
+            continue
+        e = tail.find(b"E")
+        if e >= 0 and tail[e + 1:e + 2] not in (b"-", b""):
+            for px in (prev, x):
+                if px is None:
+                    continue
+                if lo is None or px < lo:
+                    lo = px
+                if hi is None or px > hi:
+                    hi = px
+        prev = x
+    state["prev"] = prev
+    if lo is not None:
+        for r in ranges:
+            r[0] = lo if r[0] is None else min(r[0], lo)
+            r[1] = hi if r[1] is None else max(r[1], hi)
+
+
+def _moved_range(info):
+    # What a mode change moves: the model (from the first layer) or, in a
+    # file without a layer mark, everything
+    if info["layer_pos"] is not None and info["model_range"][0] is not None:
+        return info["model_range"]
+    return info["range"]
 
 
 def check_mode(info, mode):
@@ -161,21 +208,23 @@ def check_mode(info, mode):
         return _("The Duplication or Mirror Mode is disabled for"
                  " dual-extrusion models.")
     if mode in DUAL_MODES and mode != info["mode"]:
-        if info["min_x"] is None:
+        lo, hi = _moved_range(info)
+        if lo is None:
             return _("The size of the print could not be read from the"
                      " file.")
-        if info["max_x"] - info["min_x"] >= MODE_WIDTH[mode]:
-            return _("The printing area (including the purge line) of the"
-                     " model is too large for the Duplication or Mirror"
-                     " Mode.")
+        if hi - lo >= MODE_WIDTH[mode]:
+            return _("The model is too large for the Duplication or Mirror"
+                     " Mode (%.0f mm wide, at most %.0f mm).") % (
+                         hi - lo, MODE_WIDTH[mode])
     return None
 
 
 def x_offset(info, mode):
     """X shift of the print for this mode (0 for the mode of the file)"""
-    if info["min_x"] is None:
+    lo, hi = _moved_range(info)
+    if lo is None:
         return 0.
-    center = (info["min_x"] + info["max_x"]) / 2.
+    center = (lo + hi) / 2.
     file_dual = info["mode"] in DUAL_MODES
     if mode in DUAL_MODES:
         if file_dual:
@@ -351,13 +400,74 @@ def _ask_retraction(panel, filename, state):
 
 def _start(panel, filename, state):
     info, mode = state["info"], state["mode"]
-    if info is not None and mode is not None and mode != info["mode"]:
-        offset = x_offset(info, mode)
+    if info is None or mode is None or mode == info["mode"]:
+        logging.info("Starting print: %s", filename)
+        panel._screen._ws.api.print_start(filename)
+        return
+    offset = x_offset(info, mode)
+    if not offset or info["layer_pos"] is None:
+        # Moved as a whole (or not at all)
         logging.info("Starting print: %s in mode %s, X offset %.2f",
                      filename, mode, offset)
         panel._screen._ws.api.gcode_script(
             'SDCARD_PRINT_FILE FILENAME="%s" MODE=%s X_OFFSET=%.2f'
             % (filename, mode, offset))
-    else:
-        logging.info("Starting print: %s", filename)
-        panel._screen._ws.api.print_start(filename)
+        return
+    # The model moves from the first layer on: a copy of the file with
+    # the offset there (takes a moment for a large file)
+    panel._screen.show_popup_message(_("Preparing the print..."), 1)
+
+    def done(copy):
+        if copy is None:
+            panel._screen.show_popup_message(
+                _("The print could not be prepared."))
+            return False
+        logging.info("Starting print: %s in mode %s, X offset %.2f from"
+                     " the first layer (%s)", filename, mode, offset, copy)
+        panel._screen._ws.api.gcode_script(
+            'SDCARD_PRINT_FILE FILENAME="%s" MODE=%s X_OFFSET=0'
+            % (copy, mode))
+        return False
+
+    def work():
+        try:
+            copy = make_copy(filename, info["layer_pos"], offset)
+        except (IOError, OSError):
+            logging.exception("Preparing %s failed", filename)
+            copy = None
+        GLib.idle_add(done, copy)
+
+    threading.Thread(target=work, daemon=True).start()
+
+
+def make_copy(filename, layer_pos, offset):
+    """Copy of the print file with SET_GCODE_OFFSET X=offset before the
+    first layer, in COPY_DIR (replacing the previous one); returns its
+    name relative to the gcodes folder"""
+    folder = os.path.join(GCODES, COPY_DIR)
+    os.makedirs(folder, exist_ok=True)
+    src_path = os.path.join(GCODES, filename)
+    for old in os.listdir(folder):
+        old = os.path.join(folder, old)
+        # (unless the file to print is the previous copy itself)
+        if not os.path.samefile(old, src_path):
+            os.remove(old)
+    name = COPY_DIR + "/" + os.path.basename(filename)
+    dest = os.path.join(GCODES, name)
+    with open(src_path, "rb") as src, open(dest + ".tmp", "wb") as dst:
+        left = layer_pos
+        while left > 0:
+            data = src.read(min(CHUNK, left))
+            if not data:
+                break
+            dst.write(data)
+            left -= len(data)
+        dst.write(b"SET_GCODE_OFFSET X=%.2f ; moved for the print mode\n"
+                  % (offset,))
+        while True:
+            data = src.read(CHUNK)
+            if not data:
+                break
+            dst.write(data)
+    os.rename(dest + ".tmp", dest)
+    return name

@@ -275,7 +275,10 @@ check (the calibration prints, as in the stock firmware).
 `SDCARD_PRINT_FILE FILENAME=<file> MODE=<FULL_CONTROL|DUPLICATION|MIRROR|BACKUP>
 X_OFFSET=<mm>` prints the file in that IDEX mode, moved by X_OFFSET in X
 (the print dialog of the touch screen computes it as the stock display
-does); the `M605` of the file is ignored during that print.
+does); the `M605` of the file is ignored during that print.  To leave the
+purge line of the start G-code in place, the print dialog prints a copy
+of the file (`snapmaker_j1/print_mode/`) with `SET_GCODE_OFFSET X=` before
+the first layer (`;LAYER_CHANGE`, `;LAYER:0`) and `X_OFFSET=0`.
 
 The hotends are pushed in without a cable; a missing hotend opens its
 temperature sensor, which then reads far above `max_temp`.  As the stock

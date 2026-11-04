@@ -141,8 +141,13 @@ why when you tap it:
 
 - duplication, mirror and backup need a file that prints with one
   toolhead;
-- duplication needs a print narrower than 160 mm in X, mirror narrower
-  than 150 mm, the purge line included.
+- duplication needs a model narrower than 160 mm in X, mirror narrower
+  than 150 mm.
+
+The purge line of the start G-code stays where it is and does not count
+(the OrcaSlicer profile purges across X 0 to 137); the model moves from
+its first layer on.  For that the printer prints a copy of the file from
+the folder `snapmaker_j1/print_mode` (only the last one is kept).
 
 Reading a large file takes a few seconds; the mode buttons work once it
 is done.  Before the print starts, the dialog warns if the file retracts

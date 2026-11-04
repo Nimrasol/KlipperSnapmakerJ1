@@ -586,7 +586,11 @@ The Light entry is also in the menu of the print page.
 - **Limits:** changes the acceleration, velocity, cruise ratio and square
   corner velocity until the next restart.
 - **Fine Tuning:** used during a print.  It changes the Z offset (baby
-  stepping), the speed and the extrusion factor.
+  stepping), the speed and the extrusion factor.  To keep a Z offset for
+  the next prints, save it in the browser (**Save** next to the Z offset
+  in the toolhead panel of Mainsail): the printer stores it in the Z
+  origin as the calibration does, at once or, during a print, when the
+  print ends.  No Save Config is needed.
 
 ### Pause Standby
 

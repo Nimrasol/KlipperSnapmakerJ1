@@ -381,7 +381,11 @@ calibration session commands (see Calibration) it provides
 `SNAPMAKER_Z_ENDSTOP_ADJUST OFFSET=` (moves the Z origin up by OFFSET,
 updating `position_endstop` and `position_max` of `[stepper_z]`) and
 `SNAPMAKER_QUERY_STALLGUARD` (thresholds, their source and the DIAG
-line states).  The descent for XY probing is a probing move: a nozzle
+line states).  It replaces Klipper's `Z_OFFSET_APPLY_ENDSTOP` and
+`Z_OFFSET_APPLY_PROBE`: instead of a value for `SAVE_CONFIG` (which
+conflicts with `position_endstop` in `printer.cfg`), they store the Z
+offset in the Z origin like `SNAPMAKER_Z_ENDSTOP_ADJUST` and set the Z
+offset to 0; during a print, when the print ends.  The descent for XY probing is a probing move: a nozzle
 contact before reaching the calibration height aborts with a request to
 remove the build plate.  Status: `calibration` (`active`, `datum`,
 `height_difference`, `height_valid`, `z_origin_offset`, `t1_offset`,

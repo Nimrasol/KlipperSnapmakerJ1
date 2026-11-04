@@ -417,6 +417,13 @@ class SnapmakerJ1Probe:
         # without a restart; the configured values are the defaults
         self.printer.register_event_handler('klippy:connect',
                                             self._load_calibration)
+        # The Z offset (baby stepping) saved by the web interface or the
+        # touch screen goes into the Z origin too, see _apply_z_offset
+        self.pending_z_offset = None
+        self.printer.register_event_handler('klippy:connect',
+                                            self._replace_z_offset_apply)
+        self.printer.register_event_handler('klippy:ready',
+                                            self._handle_z_offset_ready)
         # Probe session handling
         self.active = None
         self.probe_session = probe.SampleAveragingHelper(
@@ -902,6 +909,68 @@ class SnapmakerJ1Probe:
         self._save_variable('snap_j1_z_endstop', "%.3f" % (endstop,))
         gcmd.respond_info("Z origin stored (stepper_z endstop at %.3f)"
                           % (endstop,))
+    # Saving the Z offset.  Klipper's Z_OFFSET_APPLY_ENDSTOP and
+    # Z_OFFSET_APPLY_PROBE (the "Save" button of the Z offset in Mainsail)
+    # write position_endstop or z_offset with SAVE_CONFIG, which fails
+    # here: printer.cfg sets position_endstop of [stepper_z] itself, and
+    # the calibrated Z origin is in save_variables anyway (the value
+    # Klipper would write is relative to the configured endstop, not the
+    # calibrated one).  Both store the offset in the Z origin instead, as
+    # the calibration does, and set the Z offset back to 0; the nozzle
+    # stays where it is.  During a print that waits until the print ends
+    # (the toolhead must not stop in the middle of a layer).
+    def _replace_z_offset_apply(self):
+        gcode = self.printer.lookup_object('gcode')
+        for name in ('Z_OFFSET_APPLY_ENDSTOP', 'Z_OFFSET_APPLY_PROBE'):
+            gcode.register_command(name, None)
+            gcode.register_command(name, self.cmd_Z_OFFSET_APPLY,
+                                   desc=self.cmd_Z_OFFSET_APPLY_help)
+    def _handle_z_offset_ready(self):
+        self.printer.get_reactor().register_timer(self._check_z_offset_pending,
+                                                  self.printer.get_reactor().NOW)
+    def _printing(self):
+        sdcard = self.printer.lookup_object('virtual_sdcard', None)
+        if sdcard is not None and sdcard.is_active():
+            return True
+        stats = self.printer.lookup_object('print_stats', None)
+        if stats is None:
+            return False
+        eventtime = self.printer.get_reactor().monotonic()
+        return stats.get_status(eventtime)['state'] in ('printing', 'paused')
+    def _check_z_offset_pending(self, eventtime):
+        if self.pending_z_offset is not None and not self._printing():
+            offset, self.pending_z_offset = self.pending_z_offset, None
+            gcode = self.printer.lookup_object('gcode')
+            try:
+                self._apply_z_offset(gcode, offset)
+            except self.printer.command_error as e:
+                gcode.respond_info("Z offset not stored: %s" % (e,))
+        return eventtime + 1.
+    def _apply_z_offset(self, gcode, offset):
+        # The offset moves the nozzle up: the origin moves up as well
+        class Respond:
+            def respond_info(self, msg):
+                gcode.respond_info(msg)
+        self._store_z_origin(Respond(), offset)
+        gcode.run_script_from_command(
+            "SET_GCODE_OFFSET Z_ADJUST=%.3f" % (-offset,))
+    cmd_Z_OFFSET_APPLY_help = (
+        "Store the Z offset in the Z origin (as the calibration does)")
+    def cmd_Z_OFFSET_APPLY(self, gcmd):
+        gcode_move = self.printer.lookup_object('gcode_move')
+        offset = gcode_move.get_status()['homing_origin'].z
+        if abs(offset) < 0.0005:
+            gcmd.respond_info("Nothing to do: Z Offset is 0")
+            return
+        if self._printing():
+            self.pending_z_offset = offset
+            gcmd.respond_info("Z offset %.3f is stored when the print ends"
+                              % (offset,))
+            return
+        self.pending_z_offset = None
+        self._apply_z_offset(self.printer.lookup_object('gcode'), offset)
+        gcmd.respond_info("Z offset %.3f stored; it applies to every print"
+                          " from now on (no SAVE_CONFIG needed)" % (offset,))
     cmd_SNAPMAKER_Z_ENDSTOP_ADJUST_help = (
         "Move the Z origin up by OFFSET (stores the Z endstop position)")
     def cmd_SNAPMAKER_Z_ENDSTOP_ADJUST(self, gcmd):

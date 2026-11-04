@@ -10,6 +10,13 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
+## Unreleased
+
+- **Saving the Z offset works:** **Save** next to the Z offset in Mainsail
+  (`Z_OFFSET_APPLY_ENDSTOP`, `Z_OFFSET_APPLY_PROBE`) failed with a
+  conflict in `printer.cfg`.  It now stores the offset in the Z origin, as
+  the calibration does; during a print when the print ends.
+
 ## v1.3.0 (2026-11-04)
 
 - **Board revision 1:** Klipper detects the main board revision at the

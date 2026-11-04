@@ -10,7 +10,7 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
-## Unreleased
+## v1.3.0 (2026-11-04)
 
 - **Board revision 1:** Klipper detects the main board revision at the
   start and sets the revision 1 pins (mains failure input, StallGuard)

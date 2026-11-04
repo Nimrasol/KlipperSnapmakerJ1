@@ -8,7 +8,7 @@
  * it alone.
  */
 .macro_prompt-dialog .v-card__text {
-    max-height: 430px;
+    max-height: 440px;
     overflow-y: auto;
 }
 .macro_prompt-dialog .v-card__text .col.text-center {

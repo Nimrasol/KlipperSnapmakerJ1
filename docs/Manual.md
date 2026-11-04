@@ -870,6 +870,13 @@ print starts, and pressure advance (`M900`) and vibration compensation
 To send files from the slicer, add the printer as a Klipper (Moonraker)
 host with `snapmaker-j1.local`.
 
+The print area of the J1 is **324 × 200 mm** with its origin at X 0,
+Y 0, as in the stock firmware: the center of the bed is at **X 162,
+Y 100**, not at X 150.  The J1 profiles of OrcaSlicer have it so
+(**Printer settings → Basic information → Printable area**: size 324 ×
+200, origin 0 / 0).  A profile with a width of 300 mm places every print
+12 mm left of the center.
+
 ## What is implemented
 
 | Area | Function |

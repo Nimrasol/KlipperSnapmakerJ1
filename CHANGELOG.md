@@ -31,6 +31,10 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   (OrcaSlicer: printer or filament profile) asks first, as on the stock
   display: a dialog of its own after the nozzle diameter check, for
   every print start (touch screen, web interface, slicer).
+- **Touch screen after an update:** KlipperScreen restarts by itself once
+  the update changed its add-on and the printer is idle, so new functions
+  appear without restarting the printer.  This works from the next update
+  on: the update that brings it still needs one restart of the printer.
 - **Power loss recovery** also for a print file in a subfolder, such as
   the moved copy of a print mode ("Unable to open file" before).
 

@@ -103,6 +103,11 @@ the versions this release is tested with: KlipperSnapmakerJ1 pins them
 in the update manager.  A release with newer tested versions moves the
 pins, so update KlipperSnapmakerJ1 first and then the others.
 
+Moonraker restarts Klipper and itself after an update of
+KlipperSnapmakerJ1.  The KlipperScreen add-on restarts KlipperScreen itself
+when `klipperscreen/` or `scripts/` changed, once Klipper is ready, nothing
+prints, no dialog is open and no guided workflow is on the screen.
+
 Only releases are offered (Moonraker `channel: stable`), not every commit
 of `main`; the touch screen asks once per new release whether to update.
 Users who help testing switch on **Release candidates** in the Update

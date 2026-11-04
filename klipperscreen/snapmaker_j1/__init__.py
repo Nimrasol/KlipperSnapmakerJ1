@@ -142,6 +142,7 @@ def init(screen):
     def _state_ready(wait=True):
         screen.snapmaker_case_light.klipper_ready()
         screen.snapmaker_update_notice.klipper_ready()
+        screen.snapmaker_addon_reload.klipper_ready()
         web_panel.setup(screen)
         if not screen.snapmaker_calibration_print:
             state_ready(wait)
@@ -309,6 +310,7 @@ def init(screen):
     datetime_panel.apply_clock(screen)
     screen.snapmaker_case_light = light.CaseLight(screen)
     screen.snapmaker_update_notice = update_notice.UpdateNotice(screen)
+    screen.snapmaker_addon_reload = update_notice.AddonReload(screen)
     logging.info("Snapmaker J1 add-on: calibration panel '%s'", PANEL)
 
 

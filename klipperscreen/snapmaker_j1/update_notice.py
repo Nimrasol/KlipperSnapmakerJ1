@@ -7,7 +7,14 @@
 # Asks once per release of KlipperSnapmakerJ1 whether to update, so the
 # user learns about it without opening the update panel.  "Later" leaves
 # the update in the update panel; the next release asks again.
+#
+# Moonraker restarts only Klipper and itself after an update of this
+# repository (it may only manage klipper, moonraker or a service of the
+# entry's own name), so the add-on would keep running its old code.
+# AddonReload restarts KlipperScreen once the code it runs has changed.
 import logging
+import os
+import subprocess
 
 import gi
 
@@ -24,6 +31,54 @@ NOTIFIED = "update_notified"
 # connects and once a week; the status is only read here)
 FIRST_CHECK_DELAY = 60
 CHECK_INTERVAL = 3600
+# What KlipperScreen runs of this repository
+REPO = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
+CODE_PATHS = ("HEAD:klipperscreen", "HEAD:scripts")
+# Seconds between the tries while KlipperScreen is in use
+RELOAD_RETRY = 10
+# Panels that guide through something on the printer
+BUSY_PANELS = ("snapmaker_calibration", "snapmaker_filament")
+
+
+def _code_version():
+    try:
+        return subprocess.run(
+            ["git", "-C", REPO, "rev-parse"] + list(CODE_PATHS),
+            capture_output=True, text=True, timeout=10,
+            check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        logging.exception("Reading the version of the add-on failed")
+        return None
+
+
+class AddonReload:
+    def __init__(self, screen):
+        self.screen = screen
+        self.running = _code_version()
+        self.retry = None
+
+    # An update restarts Klipper, so this is the moment to look
+    def klipper_ready(self):
+        if self.retry is not None or self.running is None:
+            return
+        current = _code_version()
+        if current is None or current == self.running:
+            return
+        logging.info("The add-on was updated, restarting KlipperScreen")
+        self.retry = GLib.timeout_add_seconds(RELOAD_RETRY, self._try)
+
+    def _try(self):
+        screen = self.screen
+        printer = screen.printer
+        panels = screen._cur_panels
+        if (printer is None or printer.state != "ready" or screen.dialogs
+                or screen.state.updating
+                or screen.snapmaker_calibration_print
+                or (panels and panels[-1] in BUSY_PANELS)):
+            return True
+        logging.info("Restarting KlipperScreen for the new add-on")
+        screen.restart_ks()
+        return False
 
 
 class UpdateNotice:

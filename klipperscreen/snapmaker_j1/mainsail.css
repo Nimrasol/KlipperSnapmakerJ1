@@ -3,9 +3,8 @@
  * Mainsail shows the dialogs of macros (action:prompt, for example the
  * file choice of SNAPMAKER_PRINT_MODE) as centered buttons.  This shows
  * them as a list instead: each button a row, the text line after it (the
- * print time and filament of a file) under it.  Delete this file, or
- * remove its first line, to keep your own theme: the printer then leaves
- * it alone.
+ * print time and filament of a file) under it.  To use your own theme,
+ * change the first line of this file: the printer then leaves it alone.
  */
 .macro_prompt-dialog .v-card__text {
     max-height: 440px;

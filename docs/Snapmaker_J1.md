@@ -268,9 +268,14 @@ OrcaSlicer); a tool without a diameter in the file is not checked, an
 undetected nozzle counts as a mismatch.  The dialog uses Klipper's
 `action:prompt` protocol, so KlipperScreen, Mainsail and Fluidd show it:
 "Cancel" (`_SNAPMAKER_NOZZLE_CANCEL`) or "Continue Anyway"
-(`_SNAPMAKER_NOZZLE_CONTINUE`, prints the file).
+(`_SNAPMAKER_NOZZLE_CONTINUE`).  After it, a file that retracts more than
+2 mm (`;Extruder 0 Retraction Distance:` of the J1 profiles, or
+`retraction_length` and `filament_retraction_length` of OrcaSlicer, the
+filament's winning) gets a second dialog "Inappropriate Retraction
+Distance" (`_SNAPMAKER_RETRACTION_PROMPT`); "Continue Anyway"
+(`_SNAPMAKER_CHECKED_CONTINUE`) prints the file.
 `SDCARD_PRINT_FILE FILENAME=<file> NOZZLE_CHECK=0` prints without the
-check (the calibration prints, as in the stock firmware).
+checks (the calibration prints, as in the stock firmware).
 
 `SDCARD_PRINT_FILE FILENAME=<file> MODE=<FULL_CONTROL|DUPLICATION|MIRROR|BACKUP>
 X_OFFSET=<mm>` prints the file in that IDEX mode, moved by X_OFFSET in X

@@ -29,8 +29,8 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   change the chosen mode.
 - **Retraction warning:** a print of a file that retracts more than 2 mm
   (OrcaSlicer: printer or filament profile) asks first, as on the stock
-  display - in the same dialog as the nozzle diameter check, for every
-  print start (touch screen, web interface, slicer).
+  display: a dialog of its own after the nozzle diameter check, for
+  every print start (touch screen, web interface, slicer).
 
 ## v1.2.0 (2026-10-31)
 

@@ -275,6 +275,11 @@ printer and your prints in
 They help me to see your joy and others decide and show which J1
 printers already run Klipper.
 
+**OrcaSlicer profiles for Klipper on the J1:** jacob3141 shares presets
+for 0.2 to 0.8 mm nozzles, with an improved IDEX start G-code, in
+[snapmaker-j1s-klipper-orca](https://github.com/jacob3141/snapmaker-j1s-klipper-orca)
+(a community project, not part of this one).
+
 ## Special thanks
 
 To **eazrael** ([wiki.evilazrael.de](https://wiki.evilazrael.de/)), who

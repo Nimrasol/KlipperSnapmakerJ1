@@ -170,7 +170,8 @@ is done.  In the web interface, the [print mode](#print-mode-in-the-browser)
 is chosen with a macro.
 
 During the print, the print page shows the mode next to the elapsed time,
-and the part fans of both toolheads.
+and the part fans of both toolheads.  The elapsed time leaves out pauses:
+it stops while the print is paused, for example after a filament runout.
 
 ### Pausing, filament runout and filament change
 

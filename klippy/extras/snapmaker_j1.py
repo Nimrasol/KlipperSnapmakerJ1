@@ -530,8 +530,23 @@ class SnapmakerJ1:
                              if tune else 0.),
                 'gains': gains, 'defaults': dict(self.pid_defaults),
                 'stored': sorted(self.pid_stored)}
+    def _print_paused(self, eventtime):
+        # Time the current (or last) print spent paused; print_stats only
+        # reports total_duration with the pauses and print_duration without
+        # them and without the heating before the first extrusion.  The
+        # touch screen shows total_duration minus this as the elapsed time
+        stats = self.printer.lookup_object('print_stats', None)
+        if stats is None:
+            return 0.
+        paused = getattr(stats, 'prev_pause_duration', 0.)
+        last_pause = getattr(stats, 'last_pause_time', None)
+        if last_pause is not None \
+                and getattr(stats, 'print_start_time', None) is not None:
+            paused += eventtime - last_pause
+        return paused
     def get_status(self, eventtime):
         return {'hardware_version': self.hw_version,
+                'print_paused': self._print_paused(eventtime),
                 'detected_hardware_version': self.detected_hw_version,
                 'nozzle_t0': self._nozzle_info(0),
                 'nozzle_t1': self._nozzle_info(1),

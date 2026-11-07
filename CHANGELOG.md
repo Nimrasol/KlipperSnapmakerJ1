@@ -10,6 +10,13 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
+## Unreleased
+
+- **Elapsed time without pauses:** on the print page of the touch screen,
+  **Elapsed** stops while a print is paused (for example after a filament
+  runout) and counts on from there when it resumes; before, it kept
+  counting through the pause.
+
 ## v1.3.1 (2026-11-04)
 
 - **Saving the Z offset works:** **Save** next to the Z offset in Mainsail

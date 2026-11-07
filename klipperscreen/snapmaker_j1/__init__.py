@@ -110,6 +110,7 @@ def init(screen):
         return module
 
     screen._load_panel = _load_panel
+    _patch_subscription()
 
     get_menu_items = screen._config.get_menu_items
 
@@ -501,10 +502,29 @@ def _patch_progress_ring(screen, panel_class):
     panel_class.on_draw = _on_draw
 
 
+def _patch_subscription():
+    # The status updates also carry the pause time of the print
+    # (snapmaker_j1 print_paused), in the same update as total_duration
+    from ks_includes.MoonrakerApi import MoonrakerApi
+    object_subscription = MoonrakerApi.object_subscription
+    if getattr(object_subscription, "snapmaker_j1", False):
+        return
+
+    def _object_subscription(self, updates):
+        objects = updates.get("objects") if isinstance(updates, dict) \
+            else None
+        if isinstance(objects, dict):
+            objects.setdefault("snapmaker_j1", ["print_paused"])
+        return object_subscription(self, updates)
+
+    _object_subscription.snapmaker_j1 = True
+    MoonrakerApi.object_subscription = _object_subscription
+
+
 def _patch_job_status(panel_class):
     # Print page: the part fans of both toolheads in full (KlipperScreen
-    # cuts the fan line to 12 characters, "R:100%" became "R:10") and the
-    # print mode next to the elapsed time
+    # cuts the fan line to 12 characters, "R:100%" became "R:10"), the
+    # print mode next to the elapsed time and the elapsed time without pauses
     create_status_grid = panel_class.create_status_grid
     if getattr(create_status_grid, "snapmaker_j1", False):
         return
@@ -527,6 +547,23 @@ def _patch_job_status(panel_class):
         info.attach(row, 0, 3, 1, 1)
 
     def _process_update(self, action, data):
+        # Elapsed without pauses: KlipperScreen shows total_duration, which
+        # keeps counting while a print waits for new filament (hours after
+        # a runout overnight).  Klipper's print_duration leaves out the
+        # pauses but also the heating before the first extrusion, so the
+        # pause time (snapmaker_j1 print_paused, see _patch_subscription)
+        # is taken off total_duration
+        if action == "notify_status_update" and isinstance(data, dict) \
+                and "total_duration" in data.get("print_stats", {}):
+            stat = self._printer.get_stat
+            total = stat("print_stats", "total_duration")
+            paused = stat("snapmaker_j1", "print_paused")
+            if isinstance(total, (int, float)) \
+                    and isinstance(paused, (int, float)):
+                data = dict(data)
+                data["print_stats"] = dict(
+                    data["print_stats"],
+                    total_duration=max(total - paused, 0.))
         result = process_update(self, action, data)
         if action == "notify_status_update" and self.fans:
             self.buttons["fan"].set_label("  ".join(

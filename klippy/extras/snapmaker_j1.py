@@ -23,6 +23,9 @@ FILE_TAIL_SIZE = 128 * 1024
 PID_VARIABLE = 'snap_j1_pid_%s'
 # Temperature peaks Klipper's autotune measures before it is done
 PID_PEAKS = 12
+# Below the target by more than this, a nozzle heats at full power
+# without PID (as PID_FUNCTIONAL_RANGE of the stock firmware)
+PID_RANGE = 10.
 PID_CHECK_TIME = 1.
 
 # Board revision voltage divider on the hw_version_pin (upper bounds)
@@ -131,6 +134,36 @@ class PIDGains:
         self.gains = {'pid_Kp': Kp, 'pid_Ki': Ki, 'pid_Kd': Kd}
     def getfloat(self, option, *args, **kwargs):
         return self.gains[option]
+
+class ControlPIDRange(heaters.ControlPID):
+    # Klipper's PID control with the functional range of the stock
+    # firmware (Marlin PID_FUNCTIONAL_RANGE) for the nozzles: more than
+    # PID_RANGE below the target the heater runs at full power and the
+    # integral is not accumulated.  Klipper integrates the whole way up,
+    # unless the output is at its limit; with the slow PT100 of the J1
+    # (some seconds dead time) the nozzle then overshoots by up to 10C
+    # after heating up from standby and takes a minute or more to come
+    # back.  The integral keeps its value from before, the power that
+    # held the previous (standby) temperature, a good start for the new
+    # target.
+    def temperature_update(self, read_time, temp, target_temp):
+        if not target_temp or target_temp - temp <= PID_RANGE:
+            heaters.ControlPID.temperature_update(self, read_time, temp,
+                                                  target_temp)
+            return
+        # As ControlPID, but full power and no integration
+        time_diff = read_time - self.prev_temp_time
+        temp_diff = temp - self.prev_temp
+        if time_diff >= self.min_deriv_time:
+            temp_deriv = temp_diff / time_diff
+        else:
+            temp_deriv = (self.prev_temp_deriv
+                          * (self.min_deriv_time - time_diff)
+                          + temp_diff) / self.min_deriv_time
+        self.heater.set_pwm(read_time, self.heater_max_power)
+        self.prev_temp = temp
+        self.prev_temp_time = read_time
+        self.prev_temp_deriv = temp_deriv
 
 class SnapmakerJ1:
     def __init__(self, config):
@@ -434,15 +467,23 @@ class SnapmakerJ1:
         for name in pheaters.get_all_heaters():
             short = name.split()[-1]
             section = settings.get(name, {})
-            if section.get('control') == 'pid':
-                self.pid_defaults[short] = [
-                    section['pid_kp'], section['pid_ki'], section['pid_kd']]
+            if section.get('control') != 'pid':
+                continue
+            self.pid_defaults[short] = [
+                section['pid_kp'], section['pid_ki'], section['pid_kd']]
             gains = variables.get(PID_VARIABLE % (short,))
             if gains is not None:
-                self._set_pid_gains(pheaters.lookup_heater(name), *gains)
                 self.pid_stored.add(short)
+            else:
+                gains = self.pid_defaults[short]
+            # Also with the gains of printer.cfg: the nozzles get the
+            # functional range (ControlPIDRange)
+            self._set_pid_gains(pheaters.lookup_heater(name), *gains)
     def _set_pid_gains(self, heater, Kp, Ki, Kd):
-        heater.set_control(heaters.ControlPID(heater, PIDGains(Kp, Ki, Kd)))
+        control = heaters.ControlPID
+        if heater.get_name().startswith('extruder'):
+            control = ControlPIDRange
+        heater.set_control(control(heater, PIDGains(Kp, Ki, Kd)))
     def _lookup_idle_heater(self, gcmd, calibrate=False):
         pheaters = self.printer.lookup_object('heaters')
         try:

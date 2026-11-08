@@ -21,6 +21,14 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   ("Heater is in use"), which is the usual case there.  The calibration
   now takes over a heated heater; it still refuses during a print
   ([#11](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/11)).
+- **Nozzle temperature after a tool change:** heating up from the
+  standby temperature, the nozzles overshot by several degrees and took
+  a minute or more to come back.  They now heat at full power until
+  10C below the target and are regulated from there, as in the stock
+  firmware (overshoot below 1C on a J1).  `M109` waits until the target
+  is reached, as in the stock firmware, instead of waiting for the
+  temperature to settle
+  ([#13](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/13)).
 
 ## v1.3.1 (2026-11-04)
 

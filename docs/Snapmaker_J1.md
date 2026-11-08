@@ -177,6 +177,8 @@ E0 111, E1 011 (1 = high).
 | XY offset calibration of T1 | horizontal probing of the bed center feature | `snapmaker_j1_probe` |
 | T1 nozzle height adjustment | `SNAPMAKER_NOZZLE_HEIGHT` | `snapmaker_j1_probe` |
 | Build plate thickness | Z origin shift, setting in the calibration menu | `snapmaker_j1_probe` |
+| PID functional range of the nozzles (full power more than 10C below the target, no integration there) | `ControlPID` with the same range for the nozzles | `snapmaker_j1` |
+| `M109` waits until the target is reached (`S`, only when heating; `R` also when cooling) | `M109` with `TEMPERATURE_WAIT` instead of Klipper's wait for a settled temperature | macros |
 | PID autotune of the nozzles (stock: 235C, 8 cycles, classic Ziegler-Nichols), here also of the bed | `PID_CALIBRATE` replaced: result applied and stored at once, abortable; `SNAPMAKER_PID_RESET`; "PID Auto Tune" in the calibration menu | `snapmaker_j1`, KlipperScreen add-on |
 | Analog filament runout/jam detection | motion sensor based on the analog reading | `snapmaker_j1_filament_sensor` |
 | Pause / resume with parking, priming and wiping | `PAUSE`/`RESUME` macros, `SAVE_DUAL_CARRIAGE_STATE` | macros |
@@ -606,7 +608,12 @@ KlipperScreen installed:
    (28 / 0.65 / 180) tuned from heat-up curves at 220C, because the
    `PID_CALIBRATE` result (about 12.4 / 0.53 / 72) overshot by 5C; they
    overshoot about 1.5C and recover from the part fan switching to 100%
-   within about 85 s.  `PID_CALIBRATE HEATER=extruder TARGET=220`
+   within about 85 s.  The nozzles use the functional range of the
+   stock firmware: more than 10C below the target they heat at full
+   power without integrating, so heating up from a standby temperature
+   (tool changes with ooze prevention) no longer winds the integral up;
+   175 -> 240C overshot 3C with calibrated values and 1.5C with the
+   defaults before, 0.4C and 0.3C with it.  `PID_CALIBRATE HEATER=extruder TARGET=220`
    (likewise `extruder1`, and `heater_bed` at 60) measures and stores
    values of the own printer (`snap_j1_pid_<heater>`; the add-on
    replaces Klipper's command at startup).  Check

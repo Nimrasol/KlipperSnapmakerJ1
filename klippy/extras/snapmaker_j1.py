@@ -443,14 +443,22 @@ class SnapmakerJ1:
                 self.pid_stored.add(short)
     def _set_pid_gains(self, heater, Kp, Ki, Kd):
         heater.set_control(heaters.ControlPID(heater, PIDGains(Kp, Ki, Kd)))
-    def _lookup_idle_heater(self, gcmd):
+    def _lookup_idle_heater(self, gcmd, calibrate=False):
         pheaters = self.printer.lookup_object('heaters')
         try:
             heater = pheaters.lookup_heater(gcmd.get('HEATER'))
         except self.printer.config_error as e:
             raise gcmd.error(str(e))
-        # Changing the control switches the heater off
-        if heater.get_status(self.reactor.monotonic())['target']:
+        eventtime = self.reactor.monotonic()
+        if not heater.get_status(eventtime)['target']:
+            return heater
+        # Changing the control switches the heater off.  A calibration
+        # takes over a heater that is only heated (KlipperScreen's PID
+        # button sits next to the target temperature, which is usually
+        # set first), but never in a print
+        state = self.printer.lookup_object('print_stats').get_status(
+            eventtime)['state']
+        if not calibrate or state in ('printing', 'paused'):
             raise gcmd.error("Heater %s is in use" % (heater.get_name(),))
         return heater
     def _handle_pid_abort(self, web_request):
@@ -461,7 +469,7 @@ class SnapmakerJ1:
         # As Klipper's PID_CALIBRATE, with the result applied at once and
         # kept in save_variables instead of printer.cfg, and an abort
         # (endpoint snapmaker_j1/pid_abort)
-        heater = self._lookup_idle_heater(gcmd)
+        heater = self._lookup_idle_heater(gcmd, calibrate=True)
         target = gcmd.get_float('TARGET')
         short = heater.get_name().split()[-1]
         # Nozzles off the parking wipers (macro of the J1 configuration)

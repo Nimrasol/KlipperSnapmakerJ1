@@ -16,6 +16,11 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   **Elapsed** stops while a print is paused (for example after a filament
   runout) and counts on from there when it resumes; before, it kept
   counting through the pause.
+- **PID calibration from the temperature page:** the PID button of the
+  touch screen did nothing when the heater had a target temperature
+  ("Heater is in use"), which is the usual case there.  The calibration
+  now takes over a heated heater; it still refuses during a print
+  ([#11](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/11)).
 
 ## v1.3.1 (2026-11-04)
 

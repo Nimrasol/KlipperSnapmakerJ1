@@ -62,7 +62,11 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 ![Main menu](manual/main-menu.png)
 
 **Title bar.** The current temperatures of the left nozzle (0), the right
-nozzle (1) and the heated bed, the title of the page and the clock.
+nozzle (1) and the heated bed, the title of the page, the WLAN symbol and
+the clock.  The WLAN symbol shows the signal strength, greyed out without
+a connection.  Tap it to see the network, the signal, the IP address and
+the address of the [web interface](#web-interface); **WLAN** there opens
+the WLAN page.
 
 **Action bar (left).**
 - **Back:** returns to the previous page.
@@ -623,7 +627,8 @@ Set the bed standby temperature and the delay here; they are kept.
 </table>
 
 - **WLAN:** choose the network and enter its password; the page also
-  shows the address of the printer.
+  shows the address of the printer.  The WLAN symbol in the title bar
+  opens it as well.
 - **Network Name:** the name of the printer in the network.  The web
   interface is reached at `http://<name>.local`.  Give each printer its
   own name when you have several.

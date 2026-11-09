@@ -53,6 +53,11 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   size.  The setting is no longer offered; a size chosen before goes back
   to medium with one restart of the screen
   ([#9](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/9)).
+- **WLAN symbol in the title bar:** left of the clock, it shows the
+  signal strength of the WLAN, greyed out without a connection.  A tap
+  shows the network, the signal, the IP address and the address of the
+  web interface, with a button to the WLAN page
+  ([D#8](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/8)).
 
 ## v1.3.1 (2026-11-04)
 

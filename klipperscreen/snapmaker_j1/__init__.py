@@ -613,11 +613,63 @@ def _patch_job_status(panel_class):
         if deactivate is not None:
             deactivate(self)
 
+    # After a print: one "Save Z offset" button instead of "Save Z Endstop"
+    # and "Save Z Probe" (both store the offset in the Z origin, see
+    # snapmaker_j1_probe), with the dialog of Fine Tuning and without
+    # KlipperScreen's SAVE_CONFIG afterwards; the second button's place
+    # stays empty, the other buttons keep theirs
+    create_buttons = panel_class.create_buttons
+
+    def _create_buttons(self):
+        create_buttons(self)
+        self.buttons["save_offset_endstop"].set_label(_("Save Z offset"))
+        probe = self.buttons["save_offset_probe"]
+        probe.set_no_show_all(True)
+        probe.hide()
+
+    def _save_offset(self, widget, device):
+        _confirm_save_z(self, self.zoffset)
+
     _create_status_grid.snapmaker_j1 = True
     panel_class.create_status_grid = _create_status_grid
+    panel_class.create_buttons = _create_buttons
+    panel_class.save_offset = _save_offset
     panel_class.process_update = _process_update
     panel_class.activate = _activate
     panel_class.deactivate = _deactivate
+
+
+def _confirm_save_z(panel, offset):
+    # Saving the Z offset (Fine Tuning, print page): stored in the Z origin
+    # by Z_OFFSET_APPLY_ENDSTOP of snapmaker_j1_probe, no SAVE_CONFIG.  As
+    # KlipperScreen's confirmations: a centered block of text in the middle
+    # of the dialog, the value in bold between the question and the
+    # explanation
+    label = Gtk.Label(hexpand=True, vexpand=True, halign=Gtk.Align.CENTER,
+                      valign=Gtk.Align.CENTER, wrap=True,
+                      wrap_mode=Pango.WrapMode.WORD_CHAR,
+                      justify=Gtk.Justification.CENTER, max_width_chars=48)
+    label.set_markup("%s\n\n<b>%s</b>\n\n%s" % (
+        GLib.markup_escape_text(_("Save the Z offset?")),
+        GLib.markup_escape_text("%+.3f mm" % (offset,)),
+        GLib.markup_escape_text(
+            _("It moves into the Z origin, as the calibration does, and"
+              " applies to every print from now on. The offset shows 0"
+              " afterwards; the nozzle stays where it is. During a print"
+              " it is stored when the print ends."))))
+    buttons = [
+        {"name": _("Save"), "response": Gtk.ResponseType.APPLY,
+         "style": "dialog-info"},
+        {"name": _("Cancel"), "response": Gtk.ResponseType.CANCEL,
+         "style": "dialog-error"},
+    ]
+
+    def response(dialog, response_id):
+        panel._gtk.remove_dialog(dialog)
+        if response_id == Gtk.ResponseType.APPLY:
+            panel._screen._ws.api.gcode_script("Z_OFFSET_APPLY_ENDSTOP")
+
+    panel._gtk.Dialog(_("Save Z offset"), buttons, label, response)
 
 
 def _patch_fine_tune(panel_class):
@@ -687,29 +739,7 @@ def _patch_fine_tune(panel_class):
         return "%s\n%+.3f" % (_("Saved"), saved)
 
     def _confirm_save(widget, self):
-        # As the other dialogs of the add-on: centered text, the value in
-        # bold between the question and the explanation
-        label = Gtk.Label(wrap=True, justify=Gtk.Justification.CENTER)
-        label.set_markup("%s\n\n<b>%s</b>\n\n%s" % (
-            GLib.markup_escape_text(_("Save the Z offset?")),
-            GLib.markup_escape_text("%+.3f mm" % (self.z_offset,)),
-            GLib.markup_escape_text(
-                _("It moves into the Z origin, as the calibration does, and"
-                  " applies to every print from now on. The offset shows 0"
-                  " afterwards; the nozzle stays where it is. During a print"
-                  " it is stored when the print ends."))))
-        buttons = [
-            {"name": _("Save"), "response": Gtk.ResponseType.APPLY,
-             "style": "dialog-info"},
-            {"name": _("Cancel"), "response": Gtk.ResponseType.CANCEL,
-             "style": "dialog-error"},
-        ]
-        self._gtk.Dialog(_("Save Z offset"), buttons, label, _save, self)
-
-    def _save(dialog, response_id, self):
-        self._gtk.remove_dialog(dialog)
-        if response_id == Gtk.ResponseType.APPLY:
-            self._screen._ws.api.gcode_script("Z_OFFSET_APPLY_ENDSTOP")
+        _confirm_save_z(self, self.z_offset)
 
     _init.snapmaker_j1 = True
     panel_class.__init__ = _init

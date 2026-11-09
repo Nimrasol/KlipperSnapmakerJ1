@@ -596,6 +596,8 @@ The Light entry is also in the menu of the print page.
     it in the Z origin as the calibration does, at once or, during a
     print, when the print ends; the offset shows 0 afterwards and the
     nozzle stays where it is.  No Save Config and no restart are needed.
+    After a print with a Z offset, the print page offers the same as
+    **Save Z offset**.
   - **Saved:** the button shows the sum of the Z offsets saved since the
     last Z Offset Calibration, which sets it back to 0.
 

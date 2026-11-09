@@ -33,7 +33,10 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   button next to the Z offset; it stores the offset in the Z origin as
   Mainsail's **Save** does, after a confirmation.  The button shows the Z
   offsets saved since the last Z Offset Calibration.  Z- is now above
-  Z+ ([#6](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/6)).
+  Z+.  After a print, the print page offers one **Save Z offset** button
+  with the same dialog instead of "Save Z Endstop" and "Save Z Probe",
+  which did the same and asked for a Save Config afterwards
+  ([#6](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/6)).
 - **Z offset only on a homed printer:** without homing, Klipper took
   every tap on Z+/Z- into the Z offset although nothing moved, and saving
   it shifted the Z origin unnoticed.  `SET_GCODE_OFFSET` now refuses Z

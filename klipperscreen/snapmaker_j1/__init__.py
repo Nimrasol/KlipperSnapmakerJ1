@@ -10,7 +10,7 @@ from math import pi
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gtk
+from gi.repository import GLib, Gtk, Pango
 
 from ks_includes.KlippyGtk import find_widget
 from ks_includes.printer import Printer
@@ -103,6 +103,8 @@ def init(screen):
             _patch_system(screen, module.Panel)
         elif panel == "extrude":
             _patch_extrude(module.Panel)
+        elif panel == "fine_tune":
+            _patch_fine_tune(module.Panel)
         elif panel == "updater":
             _patch_updater(screen, module.Panel)
         elif panel == "gcodes":
@@ -504,7 +506,8 @@ def _patch_progress_ring(screen, panel_class):
 
 def _patch_subscription():
     # The status updates also carry the pause time of the print
-    # (snapmaker_j1 print_paused), in the same update as total_duration
+    # (snapmaker_j1 print_paused), in the same update as total_duration,
+    # and the saved Z offset (probe z_saved_offset)
     from ks_includes.MoonrakerApi import MoonrakerApi
     object_subscription = MoonrakerApi.object_subscription
     if getattr(object_subscription, "snapmaker_j1", False):
@@ -515,6 +518,10 @@ def _patch_subscription():
             else None
         if isinstance(objects, dict):
             objects.setdefault("snapmaker_j1", ["print_paused"])
+            # The Z offsets saved since the last Z calibration (Fine Tuning)
+            probe = objects.setdefault("probe", [])
+            if isinstance(probe, list) and "z_saved_offset" not in probe:
+                objects["probe"] = probe + ["z_saved_offset"]
         return object_subscription(self, updates)
 
     _object_subscription.snapmaker_j1 = True
@@ -611,6 +618,102 @@ def _patch_job_status(panel_class):
     panel_class.process_update = _process_update
     panel_class.activate = _activate
     panel_class.deactivate = _deactivate
+
+
+def _patch_fine_tune(panel_class):
+    # Fine Tuning: a save button next to the Z offset, which stores the
+    # offset in the Z origin as the calibration does (Z_OFFSET_APPLY_ENDSTOP
+    # of snapmaker_j1_probe; in a print when the print ends).  KlipperScreen
+    # offers this only on the print page after a print.  The offset button
+    # shares its grid cell with it, the other buttons keep their places
+    init = panel_class.__init__
+    if getattr(init, "snapmaker_j1", False):
+        return
+    process_update = panel_class.process_update
+
+    def _init(self, *args, **kwargs):
+        init(self, *args, **kwargs)
+        zoffset = self.labels["zoffset"]
+        grid = zoffset.get_parent()
+        left = grid.child_get_property(zoffset, "left-attach")
+        top = grid.child_get_property(zoffset, "top-attach")
+        grid.remove(zoffset)
+        # The button shows the Z offsets saved since the last Z calibration
+        save = self._gtk.Button("complete", _saved_label(self), "color1",
+                                self.bts)
+        save.connect("clicked", _confirm_save, self)
+        save.set_sensitive(False)
+        # Two short lines that never widen the column (the columns of the
+        # page are homogeneous: a wide button pushes the page off screen)
+        text = find_widget(save, Gtk.Label)
+        if text is not None:
+            text.set_justify(Gtk.Justification.CENTER)
+            text.set_max_width_chars(7)
+            text.set_ellipsize(Pango.EllipsizeMode.END)
+        self.labels["snapmaker_save_z"] = save
+        row = Gtk.Grid(column_homogeneous=True)
+        row.attach(zoffset, 0, 0, 2, 1)
+        row.attach(save, 2, 0, 1, 1)
+        grid.attach(row, left, top, 1, 1)
+        # Z- (bed up, closer to the nozzle) above Z+
+        zplus, zminus = self.labels["z+"], self.labels["z-"]
+        places = [(grid.child_get_property(b, "left-attach"),
+                   grid.child_get_property(b, "top-attach"))
+                  for b in (zplus, zminus)]
+        grid.remove(zplus)
+        grid.remove(zminus)
+        grid.attach(zplus, places[1][0], places[1][1], 1, 1)
+        grid.attach(zminus, places[0][0], places[0][1], 1, 1)
+
+    def _process_update(self, action, data):
+        result = process_update(self, action, data)
+        save = self.labels.get("snapmaker_save_z")
+        if save is not None and action == "notify_status_update":
+            save.set_sensitive(abs(self.z_offset) >= 0.0005)
+            save.set_label(_saved_label(self))
+            # Z+/Z- only on a homed printer (snapmaker_j1_probe refuses
+            # the change otherwise, but KlipperScreen shows the new value
+            # before the answer)
+            homed = "z" in (self._printer.get_stat("toolhead", "homed_axes")
+                            or "")
+            for name in ("z+", "z-"):
+                self.labels[name].set_sensitive(homed)
+        return result
+
+    def _saved_label(self):
+        saved = self._printer.get_stat("probe", "z_saved_offset")
+        if not isinstance(saved, (int, float)):
+            saved = 0.
+        return "%s\n%+.3f" % (_("Saved"), saved)
+
+    def _confirm_save(widget, self):
+        # As the other dialogs of the add-on: centered text, the value in
+        # bold between the question and the explanation
+        label = Gtk.Label(wrap=True, justify=Gtk.Justification.CENTER)
+        label.set_markup("%s\n\n<b>%s</b>\n\n%s" % (
+            GLib.markup_escape_text(_("Save the Z offset?")),
+            GLib.markup_escape_text("%+.3f mm" % (self.z_offset,)),
+            GLib.markup_escape_text(
+                _("It moves into the Z origin, as the calibration does, and"
+                  " applies to every print from now on. The offset shows 0"
+                  " afterwards; the nozzle stays where it is. During a print"
+                  " it is stored when the print ends."))))
+        buttons = [
+            {"name": _("Save"), "response": Gtk.ResponseType.APPLY,
+             "style": "dialog-info"},
+            {"name": _("Cancel"), "response": Gtk.ResponseType.CANCEL,
+             "style": "dialog-error"},
+        ]
+        self._gtk.Dialog(_("Save Z offset"), buttons, label, _save, self)
+
+    def _save(dialog, response_id, self):
+        self._gtk.remove_dialog(dialog)
+        if response_id == Gtk.ResponseType.APPLY:
+            self._screen._ws.api.gcode_script("Z_OFFSET_APPLY_ENDSTOP")
+
+    _init.snapmaker_j1 = True
+    panel_class.__init__ = _init
+    panel_class.process_update = _process_update
 
 
 def _patch_move_options(panel_class):

@@ -412,6 +412,8 @@ class SnapmakerJ1Probe:
         # Build plate on the bed: Z 0 is its surface
         self.plate_thickness_setting = config.getfloat(
             'plate_thickness', 5., minval=0., maxval=MAX_PLATE_THICKNESS)
+        # Z offsets saved since the last Z calibration (see _apply_z_offset)
+        self.z_saved_offset = 0.
         # Calibration results (Z origin, X endstop of the right carriage,
         # plate thickness) are kept in save_variables, which take effect
         # without a restart; the configured values are the defaults
@@ -462,6 +464,9 @@ class SnapmakerJ1Probe:
             'bed_center_offset': self.pending_center}
         status['stallguard'] = self.stallguard.get_status()
         status['plate_thickness'] = self.plate_thickness_setting
+        # Z offsets saved since the last Z calibration (Fine Tuning,
+        # Mainsail); the Z calibration sets it back to 0
+        status['z_saved_offset'] = self.z_saved_offset
         # X endstops of the left and right carriage in use (the macros park
         # there; the right one is calibrated, see _load_calibration)
         status['carriage_endstops'] = [
@@ -865,6 +870,11 @@ class SnapmakerJ1Probe:
         plate = variables.get('snap_j1_plate_thickness')
         if plate is not None:
             self.plate_thickness_setting = float(plate)
+        try:
+            self.z_saved_offset = float(
+                variables.get('snap_j1_z_saved_offset', 0.))
+        except (TypeError, ValueError):
+            self.z_saved_offset = 0.
     def _set_rail_endstop(self, rail, endstop):
         # The J1 homes Z and the right carriage to their maximum, so the
         # endstop position doubles as the travel limit
@@ -879,6 +889,10 @@ class SnapmakerJ1Probe:
             axes_max = list(kin.axes_max)
             axes_max[2] = endstop
             kin.axes_max = type(kin.axes_max)(axes_max)
+    def _set_z_saved_offset(self, value):
+        self.z_saved_offset = round(value, 3)
+        self._save_variable('snap_j1_z_saved_offset',
+                            "%.3f" % (self.z_saved_offset,))
     def _save_variable(self, name, value):
         self.printer.lookup_object('gcode').run_script_from_command(
             "SAVE_VARIABLE VARIABLE=%s VALUE=%s" % (name, value))
@@ -925,6 +939,48 @@ class SnapmakerJ1Probe:
             gcode.register_command(name, None)
             gcode.register_command(name, self.cmd_Z_OFFSET_APPLY,
                                    desc=self.cmd_Z_OFFSET_APPLY_help)
+        self.set_gcode_offset = gcode.register_command('SET_GCODE_OFFSET',
+                                                       None)
+        gcode.register_command('SET_GCODE_OFFSET', self.cmd_SET_GCODE_OFFSET,
+                               desc=self.cmd_SET_GCODE_OFFSET_help)
+    # The Z offset can only be changed on a homed printer.  Klipper sets
+    # the offset first and then fails on the move ("Must home axis
+    # first"): nothing moves, but every tap on Z+/Z- (KlipperScreen,
+    # Mainsail) adds to the offset, and saving it would shift the Z origin
+    # by an amount nobody saw.  Setting it back to 0 is always possible
+    # (without the move when Z is not homed); with MOVE=1 the new position
+    # must be within the Z range, or the offset stays as it was.
+    cmd_SET_GCODE_OFFSET_help = "Set a virtual offset to g-code positions"
+    def cmd_SET_GCODE_OFFSET(self, gcmd):
+        z = gcmd.get_float('Z', None)
+        adjust = gcmd.get_float('Z_ADJUST', None)
+        if z is None and adjust is None:
+            self.set_gcode_offset(gcmd)
+            return
+        gcode_move = self.printer.lookup_object('gcode_move')
+        current = gcode_move.get_status()['homing_origin'].z
+        new = z if z is not None else current + adjust
+        toolhead = self.printer.lookup_object('toolhead')
+        status = toolhead.get_status(self.printer.get_reactor().monotonic())
+        if 'z' not in status['homed_axes']:
+            if abs(new - current) < 0.0005:
+                self.set_gcode_offset(gcmd)
+                return
+            if abs(new) >= 0.0005:
+                raise gcmd.error("Home Z first: the Z offset can only be"
+                                 " changed on a homed printer")
+            params = dict(gcmd.get_command_parameters())
+            params.pop('MOVE', None)
+            gcmd = self.printer.lookup_object('gcode').create_gcode_command(
+                gcmd.get_command(), gcmd.get_commandline(), params)
+        elif gcmd.get_int('MOVE', 0):
+            pos = status['position'][2] + new - current
+            low, high = status['axis_minimum'][2], status['axis_maximum'][2]
+            if not low <= pos <= high:
+                raise gcmd.error("Z offset out of range: the move would end at"
+                                 " Z %.3f (range %.3f to %.3f)"
+                                 % (pos, low, high))
+        self.set_gcode_offset(gcmd)
     def _handle_z_offset_ready(self):
         self.printer.get_reactor().register_timer(self._check_z_offset_pending,
                                                   self.printer.get_reactor().NOW)
@@ -952,8 +1008,15 @@ class SnapmakerJ1Probe:
             def respond_info(self, msg):
                 gcode.respond_info(msg)
         self._store_z_origin(Respond(), offset)
-        gcode.run_script_from_command(
-            "SET_GCODE_OFFSET Z_ADJUST=%.3f" % (-offset,))
+        self._set_z_saved_offset(self.z_saved_offset + offset)
+        # Klipper's own command: the offset goes back to 0 also when Z is
+        # no longer homed (motors off after the print)
+        adjust = "%.3f" % (-offset,)
+        self.set_gcode_offset(gcode.create_gcode_command(
+            "SET_GCODE_OFFSET", "SET_GCODE_OFFSET Z_ADJUST=" + adjust,
+            {'Z_ADJUST': adjust}))
+    # Its messages must not contain "SAVE_CONFIG": KlipperScreen opens its
+    # "Save configuration?" dialog for every message with that word
     cmd_Z_OFFSET_APPLY_help = (
         "Store the Z offset in the Z origin (as the calibration does)")
     def cmd_Z_OFFSET_APPLY(self, gcmd):
@@ -970,7 +1033,7 @@ class SnapmakerJ1Probe:
         self.pending_z_offset = None
         self._apply_z_offset(self.printer.lookup_object('gcode'), offset)
         gcmd.respond_info("Z offset %.3f stored; it applies to every print"
-                          " from now on (no SAVE_CONFIG needed)" % (offset,))
+                          " from now on" % (offset,))
     cmd_SNAPMAKER_Z_ENDSTOP_ADJUST_help = (
         "Move the Z origin up by OFFSET (stores the Z endstop position)")
     def cmd_SNAPMAKER_Z_ENDSTOP_ADJUST(self, gcmd):
@@ -1122,6 +1185,8 @@ class SnapmakerJ1Probe:
             gcode = self.printer.lookup_object('gcode')
             if self.pending_z is not None:
                 self._store_z_origin(gcmd, self.pending_z)
+                # A new Z calibration: no saved Z offsets on top of it
+                self._set_z_saved_offset(0.)
             if self.pending_t1 is not None:
                 endstop, offset_y = self.pending_t1
                 self._set_rail_endstop(self._dc_rails()[1].rail, endstop)

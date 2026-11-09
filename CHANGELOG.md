@@ -29,6 +29,21 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   is reached, as in the stock firmware, instead of waiting for the
   temperature to settle
   ([#13](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/13)).
+- **Saving the Z offset on the touch screen:** Fine Tuning has a save
+  button next to the Z offset; it stores the offset in the Z origin as
+  Mainsail's **Save** does, after a confirmation.  The button shows the Z
+  offsets saved since the last Z Offset Calibration.  Z- is now above
+  Z+ ([#6](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/6)).
+- **Z offset only on a homed printer:** without homing, Klipper took
+  every tap on Z+/Z- into the Z offset although nothing moved, and saving
+  it shifted the Z origin unnoticed.  `SET_GCODE_OFFSET` now refuses Z
+  changes until Z is homed (back to 0 is always possible) and changes
+  that would move the bed out of its range; on the touch screen, Z+/Z-
+  are disabled until Z is homed.  A start G-code that sets a Z offset
+  before `G28` stops with an error now.
+- **No false "Save configuration?" dialog:** after saving the Z offset,
+  the touch screen asked to save the configuration and restart Klipper,
+  although nothing was to save (its message mentioned SAVE_CONFIG).
 
 ## v1.3.1 (2026-11-04)
 

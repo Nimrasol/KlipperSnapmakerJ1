@@ -587,11 +587,17 @@ The Light entry is also in the menu of the print page.
 - **Limits:** changes the acceleration, velocity, cruise ratio and square
   corner velocity until the next restart.
 - **Fine Tuning:** used during a print.  It changes the Z offset (baby
-  stepping), the speed and the extrusion factor.  To keep a Z offset for
-  the next prints, save it in the browser (**Save** next to the Z offset
-  in the toolhead panel of Mainsail): the printer stores it in the Z
-  origin as the calibration does, at once or, during a print, when the
-  print ends.  No Save Config is needed.
+  stepping), the speed and the extrusion factor.  **Z-** moves the bed up
+  (closer to the nozzle), **Z+** down; both work only on a homed printer.
+  Tapping the offset sets it back to 0.
+  - **Saving the Z offset:** the button with the check mark next to the
+    offset (or **Save** next to the Z offset in the toolhead panel of
+    Mainsail) keeps the offset for the next prints.  The printer stores
+    it in the Z origin as the calibration does, at once or, during a
+    print, when the print ends; the offset shows 0 afterwards and the
+    nozzle stays where it is.  No Save Config and no restart are needed.
+  - **Saved:** the button shows the sum of the Z offsets saved since the
+    last Z Offset Calibration, which sets it back to 0.
 
 ### Pause Standby
 

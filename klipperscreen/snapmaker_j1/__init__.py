@@ -68,6 +68,7 @@ SHUTDOWN_HINT = "Once the underlying issue is corrected"
 
 
 def init(screen):
+    _reset_font_size(screen)
     # Provide the calibration panel without adding files to KlipperScreen
     load_panel = screen._load_panel
 
@@ -855,14 +856,32 @@ def _patch_extrude(panel_class):
     panel_class.update_temp = _update_temp
 
 
+def _reset_font_size(screen):
+    # The pages of the J1 are laid out for the default font size: the
+    # larger sizes of KlipperScreen make the text barely larger (6% at
+    # most) but shrink or drop the icons, and the pages of the add-on
+    # have fixed sizes.  The setting is not offered; a size chosen before
+    # goes back to medium, with one restart of KlipperScreen (it reads the
+    # size before the add-ons are loaded)
+    config = screen._config
+    if config.get_main_config().get("font_size", "medium") == "medium":
+        return
+    logging.info("Snapmaker J1 add-on: font size back to medium")
+    config.set("main", "font_size", "medium")
+    config.save_user_config_options()
+    GLib.idle_add(screen.restart_ks)
+
+
 def _patch_settings_options(panel_class):
-    # The display settings are in the light panel
+    # The display settings are in the light panel; the font size is not
+    # offered (see _reset_font_size)
     add_option = panel_class.add_option
     if getattr(add_option, "snapmaker_j1", False):
         return
 
     def _add_option(self, boxname, opt_array, opt_name, option):
-        if boxname == "settings" and opt_name in light.DISPLAY_OPTIONS:
+        if boxname == "settings" and (opt_name in light.DISPLAY_OPTIONS
+                                      or opt_name == "font_size"):
             return {}
         return add_option(self, boxname, opt_array, opt_name, option)
 

@@ -642,7 +642,7 @@ clock, the print history and the log files show a wrong time.
 
 | Entry | Content |
 | --- | --- |
-| KlipperScreen | settings of the screen (language, theme, font size) |
+| KlipperScreen | settings of the screen (language, theme) |
 | Macros | runs Klipper macros |
 | Console | Klipper's g-code console |
 | Update | updates of KlipperSnapmakerJ1, Klipper, Moonraker and KlipperScreen |

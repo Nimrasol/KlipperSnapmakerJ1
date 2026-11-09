@@ -47,6 +47,12 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
 - **No false "Save configuration?" dialog:** after saving the Z offset,
   the touch screen asked to save the configuration and restart Klipper,
   although nothing was to save (its message mentioned SAVE_CONFIG).
+- **No font size setting on the touch screen:** the larger sizes of
+  KlipperScreen made the text barely larger (6% at most) but shrank or
+  dropped the icons, and the pages of the J1 are laid out for the default
+  size.  The setting is no longer offered; a size chosen before goes back
+  to medium with one restart of the screen
+  ([#9](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/9)).
 
 ## v1.3.1 (2026-11-04)
 

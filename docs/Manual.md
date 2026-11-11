@@ -879,6 +879,8 @@ over https only, and browsers do not let it connect to the printer.
 
 ### Webcam
 
+![Webcam page in Mainsail](manual/web-webcam.png)
+
 A USB webcam in the USB port of the display module shows in Mainsail:
 on the dashboard and full size under **Webcams**.  It has to be a UVC
 camera with MJPEG, as most USB webcams are; cameras without MJPEG are not
@@ -891,8 +893,14 @@ does not.
    (ustreamer) from the network; this takes several minutes, printing is
    possible meanwhile.  The screen reports **Webcam ready** when it is
    done.
-2. Mainsail shows the camera as **J1**.  Name, rotation and mirroring are
-   set in Mainsail (**Settings → Webcams**) and are kept.
+2. Mainsail shows the camera as **J1**: on the dashboard (left) and on
+   the page **Webcam**.  Name, rotation and mirroring are set in Mainsail
+   (**Settings → Webcams → Edit**, right) and are kept.
+
+<table>
+<tr><td><img src="manual/web-webcam-panel.png" width="420"></td>
+<td><img src="manual/web-webcam-settings.png" width="420"></td></tr>
+</table>
 
 The stream starts when the camera is plugged in and stops when it is
 unplugged; meanwhile Mainsail does not show the camera.  It runs at

@@ -9,16 +9,28 @@ import socket
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import GLib, Gtk, Pango
+from gi.repository import GdkPixbuf, GLib, Gtk, Pango
+
+from . import style
 
 # Seconds between two readings of the connection
 POLL = 5
-# Signal strength (%) to symbol, as the WLAN page of KlipperScreen
-LEVELS = ((75, "wifi_excellent"), (60, "wifi_good"), (30, "wifi_fair"),
-          (-1, "wifi_weak"))
-# Without a connection: the full symbol, greyed out
-OFFLINE_ICON = "wifi_excellent"
-OFFLINE_OPACITY = .3
+# The parts of the WLAN symbol of the theme (wifi_excellent.svg): the dot
+# and the two arcs, from the inside out
+PARTS = (
+    "M12,21L15.6,16.2C14.6,15.45 13.35,15 12,15C10.65,15 9.4,15.45 8.4,16.2"
+    "L12,21Z",
+    "M12,9C9.3,9 6.81,9.89 4.8,11.4L6.6,13.8C8.1,12.67 9.97,12 12,12"
+    "C14.03,12 15.9,12.67 17.4,13.8L19.2,11.4C17.19,9.89 14.7,9 12,9Z",
+    "M12,3C7.95,3 4.21,4.34 1.2,6.6L3,9C5.5,7.12 8.62,6 12,6C15.38,6 18.5,7.12"
+    " 21,9L22.8,6.6C19.79,4.34 16.05,3 12,3Z",
+)
+# Signal strength (%) to the number of parts shown in orange, as the levels
+# of the WLAN page of KlipperScreen (excellent, good, fair and weak)
+LEVELS = ((75, 3), (60, 2), (-1, 1))
+# The parts without signal stay visible in the color of the title bar;
+# without a connection the whole symbol is in that color, dimmed
+OFFLINE_OPACITY = .5
 # The WLAN page (More -> Network -> WLAN)
 WLAN_PANEL = "network"
 
@@ -84,18 +96,31 @@ class WifiIcon:
             self.box.hide()
             return not self.nm_failed
         if status["ssid"]:
-            name = next(icon for level, icon in LEVELS
-                        if status["signal"] > level)
-            shown = (name, 1.)
+            parts = next(n for level, n in LEVELS if status["signal"] > level)
+            shown = (parts, 1.)
         else:
-            shown = (OFFLINE_ICON, OFFLINE_OPACITY)
+            shown = (0, OFFLINE_OPACITY)
         if shown != self.shown:
-            self.image.set_from_pixbuf(self.screen.gtk.PixbufFromIcon(
-                shown[0], self.size, self.size))
+            self.image.set_from_pixbuf(self._pixbuf(shown[0]))
             self.image.set_opacity(shown[1])
             self.shown = shown
         self.box.show()
         return True
+
+    def _pixbuf(self, parts):
+        # The first parts in orange (signal), the others in the color of the
+        # title bar
+        paths = "".join(
+            '<path d="%s" fill="%s"/>' % (
+                d, style.PRIMARY if i < parts else style.BODY)
+            for i, d in enumerate(PARTS))
+        svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"'
+               ' viewBox="0 0 24 24">%s</svg>' % (paths,))
+        loader = GdkPixbuf.PixbufLoader()
+        loader.set_size(int(self.size), int(self.size))
+        loader.write(svg.encode())
+        loader.close()
+        return loader.get_pixbuf()
 
     def _clicked(self, widget, event):
         self._update()

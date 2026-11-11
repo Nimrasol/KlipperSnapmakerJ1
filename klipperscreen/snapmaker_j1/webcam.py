@@ -7,8 +7,9 @@
 # A USB camera streams to Mainsail.  scripts/snapmaker_j1_webcam.sh (as
 # root) installs the streamer (ustreamer) and sets up the stream; here the
 # add-on sets it up at every start, asks once to install the streamer when
-# a camera is plugged in without it, and adds the camera to the webcams of
-# Mainsail (Moonraker) when there is none for the stream yet.
+# a camera is plugged in without it, adds the camera to the webcams of
+# Mainsail (Moonraker) when there is none for the stream yet and disables
+# it there while the camera is unplugged.
 import logging
 import os
 import shutil
@@ -63,7 +64,8 @@ class Webcam:
         self.screen = screen
         self.asked = False
         self.installing = False
-        self.registered = False
+        # Whether Mainsail shows the camera (None: not known yet)
+        self.shown = None
         if _streamer():
             threading.Thread(target=self._setup, daemon=True).start()
         GLib.timeout_add_seconds(POLL, self._poll)
@@ -76,18 +78,20 @@ class Webcam:
             logging.exception("Webcam: setting up the stream failed")
 
     def _poll(self):
-        if self.installing or not _camera():
+        if self.installing:
             return True
+        camera = _camera()
         if _streamer():
-            if not self.registered:
-                self._register()
-        elif not self.asked:
+            if camera != self.shown:
+                self._show(camera)
+        elif camera and not self.asked:
             self._ask()
         return True
 
-    # Mainsail shows the webcams Moonraker knows; the camera is added once,
-    # so changes made in Mainsail (name, rotation) are kept
-    def _register(self):
+    # Mainsail shows the webcams Moonraker knows.  The camera is added once,
+    # so changes made in Mainsail (name, rotation) are kept; while it is
+    # unplugged it is disabled, so Mainsail does not show an empty webcam
+    def _show(self, camera):
         ws = getattr(self.screen, "_ws", None)
         if ws is None:
             return
@@ -97,18 +101,30 @@ class Webcam:
                 webcams = result["result"]["webcams"]
             except (KeyError, TypeError):
                 return
-            if any("/webcam/" in (cam.get("stream_url") or "")
-                   for cam in webcams):
-                self.registered = True
+            own = [cam for cam in webcams
+                   if "/webcam/" in (cam.get("stream_url") or "")]
+            if not own:
+                if camera:
+                    ws.send_method("server.webcams.post_item", dict(WEBCAM),
+                                   done)
+                else:
+                    self.shown = camera
                 return
-            ws.send_method("server.webcams.post_item", dict(WEBCAM), added)
+            changes = [cam for cam in own if cam.get("enabled") != camera]
+            if not changes:
+                self.shown = camera
+            for cam in changes:
+                ws.send_method("server.webcams.post_item",
+                               {"uid": cam["uid"], "name": cam["name"],
+                                "enabled": camera}, done)
 
-        def added(result, method, params, *args):
+        def done(result, method, params, *args):
             if "result" in (result or {}):
-                logging.info("Webcam: added to Mainsail")
-                self.registered = True
+                logging.info("Webcam: %s in Mainsail",
+                             "shown" if camera else "hidden")
+                self.shown = camera
             else:
-                logging.error("Webcam: adding to Mainsail failed: %s", result)
+                logging.error("Webcam: changing Mainsail failed: %s", result)
 
         ws.send_method("server.webcams.list", {}, listed)
 
@@ -169,7 +185,7 @@ class Webcam:
         if _streamer():
             self.screen.show_popup_message(
                 _("Webcam ready: it shows in the web interface"), 1)
-            self._register()
+            self.shown = None
         else:
             self.screen.show_popup_message(
                 _("The webcam support could not be installed (network?)"))

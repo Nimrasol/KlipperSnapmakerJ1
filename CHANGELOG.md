@@ -64,7 +64,7 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   touch screen offers to install the streamer (ustreamer, from the
   network); the camera is then added to Mainsail as **J1**.  The stream
   runs while the camera is plugged in (1280 x 720, 15 frames per
-  second).
+  second); while it is unplugged, Mainsail does not show it.
 
 ## v1.3.1 (2026-11-04)
 

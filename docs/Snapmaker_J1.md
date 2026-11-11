@@ -852,7 +852,10 @@ is plugged in without ustreamer, it asks once per start to install it
 (apt, as the systemd unit `snapmaker-j1-webcam-install`).  It adds the
 camera to Moonraker's webcams (`server.webcams.post_item`, shown by
 Mainsail) when none uses the stream yet, so changes made in Mainsail
-are kept.  KlipperScreen's camera page (needs mpv) is not offered.
+are kept, and disables it while the camera is unplugged (Mainsail then
+hides it; checked every 10 s).  Mainsail shows it as `mjpegstreamer`:
+ustreamer slows down to one frame per second without stream clients,
+which the snapshots of the adaptive mode are not.  KlipperScreen's camera page (needs mpv) is not offered.
 Images of KlipperSnapmakerJ1-os built from now on include ustreamer and the
 include line.  The way back to the stock firmware
 is a small button at the end of "More → System"

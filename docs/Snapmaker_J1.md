@@ -834,7 +834,13 @@ sections) and joins the WLAN panel and the network name in a Network
 submenu.  "More → Network → Network Name" sets the host name the
 printer announces as `<name>.local` (NetworkManager and avahi on the
 D-Bus, allowed for the group `netdev`), so several printers in one
-network get their own addresses.  The way back to the stock firmware
+network get their own addresses.  A WLAN symbol left of the clock in
+the title bar (`wifi.py`) shows the signal strength of the connection
+(NetworkManager through KlipperScreen's `sdbus_nm`, read every 5 s;
+the levels of the WLAN panel, drawn from the parts of the theme symbol
+with the bars without signal in grey); a tap shows the network, the
+signal, the IP address and the web interface address, with a button
+to the WLAN panel.  The way back to the stock firmware
 is a small button at the end of "More → System"
 (`scripts/snapmaker_j1_stock.py`).  "More → Clock" sets the time zone (region,
 then city; systemd-timedated, which KlipperSnapmakerJ1-os allows for the

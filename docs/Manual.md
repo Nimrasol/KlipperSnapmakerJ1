@@ -64,9 +64,12 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 **Title bar.** The current temperatures of the left nozzle (0), the right
 nozzle (1) and the heated bed, the title of the page, the WLAN symbol and
 the clock.  The WLAN symbol shows the signal strength: the more bars are
-orange, the better the signal; without a connection the symbol is grey.  Tap it to see the network, the signal, the IP address and
-the address of the [web interface](#web-interface); **WLAN** there opens
-the WLAN page.
+orange, the better the signal; without a connection the symbol is grey.
+Tap it to see the network, the signal, the IP address and the address
+of the [web interface](#web-interface); **WLAN** there opens the WLAN
+page.
+
+<img src="manual/wlan-info.png" width="420">
 
 **Action bar (left).**
 - **Back:** returns to the previous page.

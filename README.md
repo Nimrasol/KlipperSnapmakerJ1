@@ -188,7 +188,9 @@ installer) and the Klipper system in the folder `install`.
      appears.
 4. **Connect to your network** under **More → Network → WLAN**
    (required).  The clock, the updates and the web interface need it;
-   the printer is then reachable at `http://snapmaker-j1.local`.
+   the printer is then reachable at `http://snapmaker-j1.local`.  The
+   WLAN symbol in the title bar shows the connection; tap it for the IP
+   address.
 5. **Calibrate** in the **Calibration** menu before the first print
    (required), in the order of the
    [user manual](docs/Manual.md#first-start-connect-the-wlan-and-calibrate):

@@ -135,7 +135,9 @@ interrupted by a power loss.
 <img src="docs/manual/web-dashboard.png" width="860" alt="Mainsail dashboard">
 </p>
 
-Mainsail runs on the printer: open `http://snapmaker-j1.local`.  The
+Mainsail runs on the printer: open `http://snapmaker-j1.local`, or the
+IP address that the WLAN symbol on the screen shows (if your network
+does not resolve `.local`).  The
 dialogs of the printer appear there too, the panel **Snapmaker J1**
 chooses the print mode, and the slicer uploads and starts prints directly.
 

@@ -736,9 +736,11 @@ The protections of the stock firmware are active:
 Besides the touch screen, the printer is operated from any browser in the
 network with **Mainsail**, which runs on the printer itself.  Open
 `http://snapmaker-j1.local`, or the name set in
-[Network Name](#network), or the IP address shown in
-KlipperScreen.  Touch screen and web interface work at the same time and
-always show the same state.
+[Network Name](#network), or the IP address: a tap on the WLAN symbol in
+the title bar shows it.  `.local` needs mDNS, which some networks block
+(some routers, mesh systems, guest networks); if it does not open, use
+the IP address.  Touch screen and web interface work at the same time
+and always show the same state.
 
 ### Dashboard
 

@@ -137,11 +137,13 @@ class WifiIcon:
             lines.append("")
             lines.append(GLib.markup_escape_text(
                 _("Web interface (Mainsail):")))
-            lines.append(GLib.markup_escape_text(
-                "http://%s.local" % (socket.gethostname(),)))
+            # The IP address first: <name>.local needs mDNS, which some
+            # networks block
             if status["ip"] != "?":
                 lines.append(GLib.markup_escape_text(
                     "http://%s" % (status["ip"],)))
+            lines.append(GLib.markup_escape_text(
+                "http://%s.local" % (socket.gethostname(),)))
         else:
             lines.append("<b>%s</b>" % GLib.markup_escape_text(
                 _("Not connected")))

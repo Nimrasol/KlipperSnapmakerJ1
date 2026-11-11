@@ -28,7 +28,7 @@ PARTS = (
 # Signal strength (%) to the number of parts shown in orange, as the levels
 # of the WLAN page of KlipperScreen (excellent, good, fair and weak)
 LEVELS = ((75, 3), (60, 2), (-1, 1))
-# The parts without signal stay visible in the grey of the buttons;
+# The parts without signal stay visible in grey (as disabled elements);
 # without a connection the whole symbol is grey
 # The WLAN page (More -> Network -> WLAN)
 WLAN_PANEL = "network"
@@ -106,11 +106,10 @@ class WifiIcon:
         return True
 
     def _pixbuf(self, parts):
-        # The first parts in orange (signal), the others in the grey of the
-        # buttons
+        # The first parts in orange (signal), the others in grey
         paths = "".join(
             '<path d="%s" fill="%s"/>' % (
-                d, style.PRIMARY if i < parts else style.CARD_TOP)
+                d, style.PRIMARY if i < parts else style.DISABLED)
             for i, d in enumerate(PARTS))
         svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"'
                ' viewBox="0 0 24 24">%s</svg>' % (paths,))

@@ -59,8 +59,8 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   shows the network, the signal, the IP address and the address of the
   web interface, with a button to the WLAN page
   ([D#8](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/8)).
-- **Webcam in Mainsail:** a USB camera in the USB port of the display
-  module shows in Mainsail.  The first time a camera is plugged in, the
+- **Webcam in Mainsail:** a USB webcam (UVC with MJPEG, as most are) in
+  the USB port of the display module shows in Mainsail.  The first time a camera is plugged in, the
   touch screen offers to install the streamer (ustreamer, from the
   network); the camera is then added to Mainsail as **J1**.  The stream
   runs while the camera is plugged in (1280 x 720, 15 frames per

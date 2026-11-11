@@ -23,6 +23,7 @@ from gi.repository import GLib, Gtk, Pango
 
 SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
                       "scripts", "snapmaker_j1_webcam.sh")
+STREAM_UNIT = "snapmaker-j1-webcam"
 INSTALL_UNIT = "snapmaker-j1-webcam-install"
 DEVICE = "/sys/class/video4linux/video0/device"
 # Seconds between two looks for a camera
@@ -47,6 +48,15 @@ def _camera():
         return "/usb" in os.path.realpath(DEVICE)
     except OSError:
         return False
+
+
+def _active(unit):
+    try:
+        return subprocess.run(["systemctl", "is-active", unit],
+                              capture_output=True, text=True,
+                              timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
 
 
 def _streamer():
@@ -82,8 +92,10 @@ class Webcam:
             return True
         camera = _camera()
         if _streamer():
-            if camera != self.shown:
-                self._show(camera)
+            # Shown while the stream runs (not for a camera it refuses)
+            streaming = camera and _active(STREAM_UNIT) == "active"
+            if streaming != self.shown:
+                self._show(streaming)
         elif camera and not self.asked:
             self._ask()
         return True
@@ -176,9 +188,7 @@ class Webcam:
         GLib.timeout_add_seconds(POLL, self._installed)
 
     def _installed(self):
-        state = subprocess.run(
-            ["systemctl", "is-active", INSTALL_UNIT], capture_output=True,
-            text=True).stdout.strip()
+        state = _active(INSTALL_UNIT)
         if state in ("active", "activating"):
             return True
         self.installing = False

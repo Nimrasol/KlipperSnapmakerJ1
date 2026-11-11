@@ -879,9 +879,12 @@ over https only, and browsers do not let it connect to the printer.
 
 ### Webcam
 
-A USB camera (UVC, as most USB webcams) in the USB port of the display
-module shows in Mainsail: on the dashboard and full size under
-**Webcams**.
+A USB webcam in the USB port of the display module shows in Mainsail:
+on the dashboard and full size under **Webcams**.  It has to be a UVC
+camera with MJPEG, as most USB webcams are; cameras without MJPEG are not
+streamed (the display module would have to encode every frame).  Action
+cameras in webcam mode do not always work, a DJI Action 2 for example
+does not.
 
 1. Plug in the camera.  The first time, the touch screen asks
    **Install the webcam support?**: **Install** loads the streamer
@@ -892,9 +895,10 @@ module shows in Mainsail: on the dashboard and full size under
    set in Mainsail (**Settings → Webcams**) and are kept.
 
 The stream starts when the camera is plugged in and stops when it is
-unplugged; meanwhile Mainsail does not show the camera.  It runs at 1280 x 720 with 15 frames per second (cameras
-without MJPEG: 640 x 480), which needs about 1% of the processor of the
-display module.  The touch screen itself does not show the camera.
+unplugged; meanwhile Mainsail does not show the camera.  It runs at
+1280 x 720 with 15 frames per second, which needs about 1% of the
+processor of the display module.  The touch screen itself does not show
+the camera.
 
 ## Slicer
 

@@ -842,8 +842,10 @@ with the bars without signal in grey); a tap shows the network, the
 signal, the IP address and the web interface address, with a button
 to the WLAN panel.  A USB camera streams to Mainsail (`webcam.py`,
 `scripts/snapmaker_j1_webcam.sh`): ustreamer on 127.0.0.1:8080 (MJPEG
-1280x720 at 15 fps, passed through without encoding; YUYV cameras at
-640x480), started by a udev rule for a USB `/dev/video0` through the
+1280x720 at 15 fps, passed through without encoding; cameras without
+MJPEG are not streamed, as encoding their frames took 75% of one core;
+the format is read with VIDIOC_ENUM_FMT before ustreamer starts, which
+would retry a refused format forever), started by a udev rule for a USB `/dev/video0` through the
 unit `snapmaker-j1-webcam` and stopped when the camera is unplugged;
 nginx serves it at `/webcam/` (an include line in the Mainsail site and
 `/etc/nginx/snapmaker_j1/webcam.conf`).  The add-on runs the script
@@ -852,7 +854,8 @@ is plugged in without ustreamer, it asks once per start to install it
 (apt, as the systemd unit `snapmaker-j1-webcam-install`).  It adds the
 camera to Moonraker's webcams (`server.webcams.post_item`, shown by
 Mainsail) when none uses the stream yet, so changes made in Mainsail
-are kept, and disables it while the camera is unplugged (Mainsail then
+are kept, and disables it while the stream does not run (camera
+unplugged or refused) (Mainsail then
 hides it; checked every 10 s).  Mainsail shows it as `mjpegstreamer`:
 ustreamer slows down to one frame per second without stream clients,
 which the snapshots of the adaptive mode are not.  KlipperScreen's camera page (needs mpv) is not offered.

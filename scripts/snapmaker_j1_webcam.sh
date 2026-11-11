@@ -105,6 +105,12 @@ location /webcam/ {
     if [ $units = 1 ] && systemctl is-active --quiet "$UNIT"; then
         systemctl restart "$UNIT"
     fi
+    # A camera plugged in before ustreamer was installed (or set up): udev
+    # started nothing then, or the stream failed without ustreamer
+    if [ -e /dev/video0 ] && ! systemctl is-active --quiet "$UNIT"; then
+        systemctl reset-failed "$UNIT" 2>/dev/null || true
+        systemctl start "$UNIT" || true
+    fi
     echo "webcam set up"
 }
 

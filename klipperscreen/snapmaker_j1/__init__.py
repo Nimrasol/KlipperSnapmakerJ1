@@ -18,7 +18,7 @@ from ks_includes.screen_panel import ScreenPanel
 
 from . import (calibration, chooser, datetime_panel, filament, hostname,
                light, pause, print_mode, stock, style, update_channel,
-               update_notice, web_panel, wifi)
+               update_notice, web_panel, webcam, wifi)
 
 # Install as KlipperScreen/addons/snapmaker_j1 (enable_addons: True) and
 # add a menu entry with "panel: snapmaker_calibration".
@@ -313,6 +313,7 @@ def init(screen):
     _set_backlight(BL_POWER_ON)
     datetime_panel.apply_clock(screen)
     screen.snapmaker_wifi = wifi.WifiIcon(screen)
+    screen.snapmaker_webcam = webcam.Webcam(screen)
     screen.snapmaker_case_light = light.CaseLight(screen)
     screen.snapmaker_update_notice = update_notice.UpdateNotice(screen)
     screen.snapmaker_addon_reload = update_notice.AddonReload(screen)

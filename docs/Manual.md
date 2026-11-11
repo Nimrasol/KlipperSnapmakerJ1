@@ -32,6 +32,7 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 - [More](#more)
 - [Safety and error messages](#safety-and-error-messages)
 - [Web interface](#web-interface)
+  - [Webcam](#webcam)
 - [Slicer](#slicer)
 - [What is implemented](#what-is-implemented)
 
@@ -875,6 +876,25 @@ configuration) only while all heaters are off and no print is running.
 
 Fluidd is not installed.  Its hosted page (app.fluidd.xyz) is served
 over https only, and browsers do not let it connect to the printer.
+
+### Webcam
+
+A USB camera (UVC, as most USB webcams) in the USB port of the display
+module shows in Mainsail: on the dashboard and full size under
+**Webcams**.
+
+1. Plug in the camera.  The first time, the touch screen asks
+   **Install the webcam support?**: **Install** loads the streamer
+   (ustreamer) from the network; this takes several minutes, printing is
+   possible meanwhile.  The screen reports **Webcam ready** when it is
+   done.
+2. Mainsail shows the camera as **J1**.  Name, rotation and mirroring are
+   set in Mainsail (**Settings → Webcams**) and are kept.
+
+The stream starts when the camera is plugged in and stops when it is
+unplugged.  It runs at 1280 x 720 with 15 frames per second (cameras
+without MJPEG: 640 x 480), which needs about 1% of the processor of the
+display module.  The touch screen itself does not show the camera.
 
 ## Slicer
 

@@ -840,7 +840,21 @@ the title bar (`wifi.py`) shows the signal strength of the connection
 the levels of the WLAN panel, drawn from the parts of the theme symbol
 with the bars without signal in grey); a tap shows the network, the
 signal, the IP address and the web interface address, with a button
-to the WLAN panel.  The way back to the stock firmware
+to the WLAN panel.  A USB camera streams to Mainsail (`webcam.py`,
+`scripts/snapmaker_j1_webcam.sh`): ustreamer on 127.0.0.1:8080 (MJPEG
+1280x720 at 15 fps, passed through without encoding; YUYV cameras at
+640x480), started by a udev rule for a USB `/dev/video0` through the
+unit `snapmaker-j1-webcam` and stopped when the camera is unplugged;
+nginx serves it at `/webcam/` (an include line in the Mainsail site and
+`/etc/nginx/snapmaker_j1/webcam.conf`).  The add-on runs the script
+with sudo at every start (it only writes what changed); when a camera
+is plugged in without ustreamer, it asks once per start to install it
+(apt, as the systemd unit `snapmaker-j1-webcam-install`).  It adds the
+camera to Moonraker's webcams (`server.webcams.post_item`, shown by
+Mainsail) when none uses the stream yet, so changes made in Mainsail
+are kept.  KlipperScreen's camera page (needs mpv) is not offered.
+Images of KlipperSnapmakerJ1-os built from now on include ustreamer and the
+include line.  The way back to the stock firmware
 is a small button at the end of "More → System"
 (`scripts/snapmaker_j1_stock.py`).  "More → Clock" sets the time zone (region,
 then city; systemd-timedated, which KlipperSnapmakerJ1-os allows for the

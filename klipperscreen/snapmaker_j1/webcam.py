@@ -31,7 +31,7 @@ BUSY_STATES = ("printing", "paused")
 WEBCAM = {
     "name": "J1",
     "location": "printer",
-    "service": "mjpegstreamer-adaptive",
+    "service": "mjpegstreamer",
     "target_fps": 15,
     "target_fps_idle": 5,
     "stream_url": "/webcam/?action=stream",

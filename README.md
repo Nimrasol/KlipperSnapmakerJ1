@@ -52,6 +52,10 @@ Raspberry Pi, no extra screen, no wiring.
   Klipper community.
 - **A web interface.** Mainsail in every browser of your network: watch
   and control prints, upload files, edit the configuration.
+- **A webcam.** Plug a USB webcam into the USB port of the display module
+  and watch the print in Mainsail.
+
+  <img src="docs/manual/webcam.jpg" width="480" alt="USB webcam in the USB port of the J1">
 - **Your slicer profiles keep working.** Files sliced with the J1
   profiles (for example in OrcaSlicer) print without changes, in every
   IDEX mode.

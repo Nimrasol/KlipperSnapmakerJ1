@@ -54,8 +54,8 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   to medium with one restart of the screen
   ([#9](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/9)).
 - **WLAN symbol in the title bar:** left of the clock, it shows the
-  signal strength of the WLAN in orange bars; without a connection no bar
-  is orange and the symbol is dimmed.  A tap
+  signal strength of the WLAN in orange bars; without a connection the
+  symbol is grey.  A tap
   shows the network, the signal, the IP address and the address of the
   web interface, with a button to the WLAN page
   ([D#8](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/8)).

@@ -55,9 +55,9 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   ([#9](https://github.com/Nimrasol/KlipperSnapmakerJ1/issues/9)).
 - **WLAN symbol in the title bar:** left of the clock, it shows the
   signal strength of the WLAN in orange bars; without a connection the
-  symbol is grey.  A tap
-  shows the network, the signal, the IP address and the address of the
-  web interface, with a button to the WLAN page
+  symbol is grey.  A tap shows the network, the signal and the address
+  of the web interface (the IP address first, then `<name>.local`, which
+  needs mDNS), with a button to the WLAN page
   ([D#8](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/8)).
 - **Webcam in Mainsail:** a USB webcam (UVC with MJPEG, as most are) in
   the USB port of the display module shows in Mainsail.  The first time a camera is plugged in, the

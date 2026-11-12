@@ -942,6 +942,8 @@ Y 100**, not at X 150.  The J1 profiles of OrcaSlicer have it so
 | Results | stored at once, no restart or Save Config |
 | Heaters | stock limits and protections; a missing hotend only blocks its heater; temperatures without a valid reading show N/A |
 | Light and screen | case light in four steps, dimmed after a time without touch; the screen switches off after 15 minutes |
+| Network | WLAN symbol with signal strength and the address of the web interface; network name `<name>.local` |
+| Webcam | a USB webcam (UVC with MJPEG) streams to Mainsail while it is plugged in |
 | Noise | the stock noise modes (normal, silent, loud), set by the slicer (`M2000 S113`) or `SNAPMAKER_NOISE_MODE`; every print starts in normal mode |
 | Firmware | Klipper on the main controller, installed through the factory bootloader; the stock firmware can be installed again the same way |
 

@@ -842,7 +842,7 @@ submenu.  "More → Network → Network Name" sets the host name the
 printer announces as `<name>.local` (NetworkManager and avahi on the
 D-Bus, allowed for the group `netdev`), so several printers in one
 network get their own addresses.  The service page (`service.py`,
-panel `snapmaker_service`, opened by a tiles button the add-on adds to
+panel `snapmaker_service`, opened by a wrench button the add-on adds to
 the action bar of the main menu) sets heater targets with
 `SET_HEATER_TEMPERATURE`, which does not block Klipper as `M109` does;
 the targets it shows are kept in the add-on settings (`service_targets`).

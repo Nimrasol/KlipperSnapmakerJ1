@@ -77,7 +77,7 @@ page.
 - **Back:** returns to the previous page.
 - **Circle:** returns to the main menu.
 - **Bell:** opens the notifications, for example messages from Klipper.
-- **Tiles** (main menu only): opens the [Service](#service) page; there
+- **Wrench** (main menu only): opens the [Service](#service) page; there
   the thermometer leads back to the main menu.
 
 During a print the action bar also shows the emergency stop.  There is no
@@ -105,7 +105,7 @@ one **Right Nozzle** (T1, `extruder1`).
 
 ![Service page](manual/service.png)
 
-The tiles button in the action bar of the main menu opens a page for
+The wrench button in the action bar of the main menu opens a page for
 service work: changing filament, cleaning the nozzles, lubricating the
 axes.  It heats without blocking the printer, so other commands still
 work while the nozzles heat up.

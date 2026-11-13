@@ -31,32 +31,32 @@ HEATERS = (("extruder", "Left Nozzle", 220, 0),
 # Load and unload once the nozzle is this close to its target
 READY_MARGIN = 3
 MIN_EXTRUDE_TEMP = 170
-# Symbol of the service page: four tiles
-TILES_SVG = (
+# Symbol of the service page: a wrench (Material Design Icons "wrench",
+# Apache License 2.0, as the icons of the KlipperScreen themes)
+WRENCH_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"'
-    ' viewBox="0 0 24 24" fill="%s">'
-    '<rect x="1" y="1" width="10" height="10" rx="2"/>'
-    '<rect x="13" y="1" width="10" height="10" rx="2"/>'
-    '<rect x="1" y="13" width="10" height="10" rx="2"/>'
-    '<rect x="13" y="13" width="10" height="10" rx="2"/></svg>')
+    ' viewBox="0 0 24 24" fill="%s"><path d="M22.7,19L13.6,9.9C14.5,7.6'
+    ' 14,4.9 12.1,3C10.1,1 7.1,0.6 4.7,1.7L9,6L6,9L1.6,4.7C0.4,7.1 0.9,10.1'
+    ' 2.9,12.1C4.8,14 7.5,14.5 9.8,13.6L18.9,22.7C19.3,23.1 19.9,23.1'
+    ' 20.3,22.7L22.6,20.4C23.1,20 23.1,19.3 22.7,19Z"/></svg>')
 
 
-def _tiles_pixbuf(size):
+def _wrench_pixbuf(size):
     loader = GdkPixbuf.PixbufLoader()
     loader.set_size(int(size), int(size))
-    loader.write((TILES_SVG % (style.BODY,)).encode())
+    loader.write((WRENCH_SVG % (style.BODY,)).encode())
     loader.close()
     return loader.get_pixbuf()
 
 
 class ServiceButton:
     # The button in the action bar: on the main menu it opens the service
-    # page (tiles), on the service page it returns (thermometer)
+    # page (wrench), on the service page it returns (thermometer)
     def __init__(self, screen):
         self.screen = screen
         base = screen.base_panel
         size = screen.gtk.img_scale * base.abscale
-        self.tiles = Gtk.Image.new_from_pixbuf(_tiles_pixbuf(size * 1.2))
+        self.wrench = Gtk.Image.new_from_pixbuf(_wrench_pixbuf(size * 1.2))
         self.temps = screen.gtk.Image("heat-up", size * 1.4, size * 1.4)
         button = screen.gtk.Button("heat-up", scale=base.abscale)
         button.set_no_show_all(True)
@@ -87,7 +87,7 @@ class ServiceButton:
             self.button.set_image(self.temps)
             self.button.show()
         elif panel is not None and panel is panels.get("main_menu"):
-            self.button.set_image(self.tiles)
+            self.button.set_image(self.wrench)
             self.button.show()
         else:
             self.button.hide()

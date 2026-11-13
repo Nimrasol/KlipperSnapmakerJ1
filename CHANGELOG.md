@@ -65,6 +65,18 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   network); the camera is then added to Mainsail as **J1**.  The stream
   runs while the camera is plugged in (1280 x 720, 15 frames per
   second); while it is unplugged, Mainsail does not show it.
+- **Service page:** a button in the action bar of the main menu opens a
+  page for service work: a target per heater (kept; 220°C for the
+  nozzles, 60°C for the bed) with ON/OFF and the current temperature,
+  Load and Unload once a nozzle is hot (also both at once), Nozzle
+  Service (both nozzles moved in, about 200 mm apart), Home All,
+  Distribute Grease (all axes once over their travel after
+  lubricating), Fine Tuning and All Off.  It heats without blocking the
+  printer
+  ([D#7](https://github.com/Nimrasol/KlipperSnapmakerJ1/discussions/7)).
+- **Slower loading:** Load feeds the filament at 240 mm/min as the stock
+  refill dialog, on the extrude page too; at 600 mm/min the extruder
+  could skip.
 
 ## v1.3.1 (2026-11-04)
 

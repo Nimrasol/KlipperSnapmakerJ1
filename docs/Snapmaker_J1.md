@@ -472,6 +472,13 @@ that extruder moves.  `LOAD_FILAMENT` and `UNLOAD_FILAMENT [TOOL=<0|1>]
 [TEMP=<°C>] [LENGTH=<mm>] [SPEED=<mm/min>]` use the active toolhead and
 the print temperature by default (220°C below 170°C); they are also
 used by the load/unload buttons of the KlipperScreen extrude panel.
+Loading feeds at 240mm/min (stock; 600mm/min made the extruder skip).
+`SNAPMAKER_LOAD_FILAMENT` / `SNAPMAKER_UNLOAD_FILAMENT` also take
+`TOOL=2`: both nozzles heated to their targets, then extruder1 follows
+extruder (`SYNC_EXTRUDER_MOTION ... MOTION_QUEUE=extruder`) for one move
+of both, since Klipper's single motion queue runs two separate moves
+one after the other; and `SERVICE=1`: both nozzles at the nozzle service
+position (`SNAPMAKER_NOZZLE_SERVICE`) instead of beside the wiper.
 Before loading, unloading and the extrude/retract buttons of that panel
 the nozzle moves 11mm (right nozzle 7mm) off its endstop, just beside its parking wiper, so
 the filament falls down between the wiper and the bed as on the stock
@@ -834,7 +841,18 @@ sections) and joins the WLAN panel and the network name in a Network
 submenu.  "More → Network → Network Name" sets the host name the
 printer announces as `<name>.local` (NetworkManager and avahi on the
 D-Bus, allowed for the group `netdev`), so several printers in one
-network get their own addresses.  A WLAN symbol left of the clock in
+network get their own addresses.  The service page (`service.py`,
+panel `snapmaker_service`, opened by a tiles button the add-on adds to
+the action bar of the main menu) sets heater targets with
+`SET_HEATER_TEMPERATURE`, which does not block Klipper as `M109` does;
+the targets it shows are kept in the add-on settings (`service_targets`).
+Load and Unload are enabled within 3°C of the target and call the load
+macros with `SERVICE=1`; `SNAPMAKER_NOZZLE_SERVICE` moves both nozzles
+75mm in from their endstops (`SNAPMAKER_CAL_CLEAN_POSITION DISTANCE=`)
+with the bed at least 100mm below, `SNAPMAKER_DISTRIBUTE_GREASE` moves
+both carriages (26mm from the parked one, above the 24mm safe distance),
+Y and Z (to 10mm above the plate, Z offset kept) once over their
+travel.  A WLAN symbol left of the clock in
 the title bar (`wifi.py`) shows the signal strength of the connection
 (NetworkManager through KlipperScreen's `sdbus_nm`, read every 5 s;
 the levels of the WLAN panel, drawn from the parts of the theme symbol

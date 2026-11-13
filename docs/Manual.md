@@ -17,6 +17,7 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 
 - [First start: connect the WLAN and calibrate](#first-start-connect-the-wlan-and-calibrate)
 - [The screen at a glance](#the-screen-at-a-glance)
+- [Service](#service)
 - [Printing](#printing)
 - [Temperature](#temperature)
 - [Move](#move)
@@ -76,6 +77,8 @@ page.
 - **Back:** returns to the previous page.
 - **Circle:** returns to the main menu.
 - **Bell:** opens the notifications, for example messages from Klipper.
+- **Tiles** (main menu only): opens the [Service](#service) page; there
+  the thermometer leads back to the main menu.
 
 During a print the action bar also shows the emergency stop.  There is no
 shutdown button: the J1 is switched off with its power switch.
@@ -97,6 +100,45 @@ shutdown button: the J1 is switched off with its power switch.
 
 The left nozzle is called **Left Nozzle** (T0, `extruder`) and the right
 one **Right Nozzle** (T1, `extruder1`).
+
+## Service
+
+![Service page](manual/service.png)
+
+The tiles button in the action bar of the main menu opens a page for
+service work: changing filament, cleaning the nozzles, lubricating the
+axes.  It heats without blocking the printer, so other commands still
+work while the nozzles heat up.
+
+**Heaters** (one row each):
+- **Tile** with the name and the current temperature; a tap sets the
+  target, as the target button does.
+- **Target:** tap to enter it.  The page keeps it, also after a restart:
+  220°C for the nozzles and 60°C for the bed by default.
+- **ON / OFF:** switches the heater to its target or off.  A heater that
+  is on has an orange frame; a new target applies at once.
+- **Load / Unload** (nozzles): available once the nozzle is on and
+  within 3°C of its target.  Load feeds 60 mm at 240 mm/min, Unload
+  pushes 5 mm and pulls 80 mm back.  The nozzle stays hot for another
+  run.  **Load Both / Unload Both** (beside the bed) move both
+  extruders at once; two single buttons pressed one after the other run
+  one after the other, as Klipper moves one thing at a time.  Loading
+  and unloading move both nozzles to the nozzle service position first,
+  so the filament falls on the build plate.
+
+**Bottom row:**
+- **Nozzle Service:** moves both nozzles 75 mm in from their parking
+  positions, clear of the parts there and about 200 mm apart, with the
+  bed at least 100 mm below them (homing first if needed).  The button
+  then reads **Park Nozzles** and parks them again.  It does not switch
+  any heater.
+- **Home All:** homes all axes.
+- **Distribute Grease:** after lubricating the rails and lead screws,
+  moves both nozzles, the bed and the Z axis once over their travel
+  (about a minute; down to 10 mm above the build plate).  The build
+  plate has to be empty.  Tap again for another run.
+- **Fine Tuning:** opens [Fine Tuning](#limits-and-fine-tuning).
+- **All Off:** switches all heaters off.
 
 ## Printing
 
@@ -268,6 +310,8 @@ stock firmware.
   speed.
 - **Load and Unload:** use the active nozzle at the print temperature
   (220 °C when it is colder than 170 °C), homing first if needed.
+  Loading feeds at 240 mm/min, as the stock refill dialog.  Both
+  nozzles at once: [Service](#service) page.
 - **Left Filament / Right Filament:** switch the filament sensors on or
   off.  The setting is kept after a restart.
 
@@ -818,7 +862,9 @@ All J1 commands can be typed in the console, or be added to a panel in
 
 | Macro | Function |
 | --- | --- |
-| `SNAPMAKER_LOAD_FILAMENT`, `SNAPMAKER_UNLOAD_FILAMENT` | heat a toolhead and load or unload filament (`TOOL=0` or `1`) |
+| `SNAPMAKER_LOAD_FILAMENT`, `SNAPMAKER_UNLOAD_FILAMENT` | heat a toolhead and load or unload filament (`TOOL=0` or `1`, `2` both at once; `SERVICE=1` at the nozzle service position) |
+| `SNAPMAKER_NOZZLE_SERVICE`, `SNAPMAKER_NOZZLE_PARK` | move both nozzles in for service, park them again |
+| `SNAPMAKER_DISTRIBUTE_GREASE` | move all axes once over their travel after lubricating |
 | `SNAPMAKER_PRINT_MODE` | [choose a file and its print mode](#print-mode-in-the-browser) (`FILENAME=` skips the file list) |
 | `SNAPMAKER_SET_PRINT_MODE` | IDEX mode: full control, duplication, mirror, backup |
 | `SNAPMAKER_NOISE_MODE` | stock noise mode: normal, silent, loud |
@@ -937,6 +983,7 @@ Y 100**, not at X 150.  The J1 profiles of OrcaSlicer have it so
 | Printing | IDEX, duplication, mirror and backup mode from the file or chosen on the touch screen or in the browser, with the model moved in X; tool changes with parking; pause and resume with parking, priming and wiping |
 | Print start | nozzle diameter check against the installed nozzles, retraction warning above 2 mm |
 | Filament | motion sensors on both toolheads, runout and change dialog, load and unload beside the wipers |
+| Service | service page: heaters on/off with kept targets, load and unload (both at once), nozzle service position, homing, grease distribution |
 | Power loss | recovery of the interrupted print, offered on the screen at the next start |
 | Calibration | bed leveling, Z offset, XY offset (assisted and manual), offset check, vibration compensation, PID auto tune, build plate thickness |
 | Results | stored at once, no restart or Save Config |

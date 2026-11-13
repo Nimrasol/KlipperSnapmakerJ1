@@ -52,6 +52,8 @@ Raspberry Pi, no extra screen, no wiring.
   Klipper community.
 - **A web interface.** Mainsail in every browser of your network: watch
   and control prints, upload files, edit the configuration.
+- **A service page.** Heat the nozzles, load and unload filament (both
+  at once), move the nozzles in for cleaning, distribute fresh grease.
 - **A webcam.** Plug a USB webcam into the USB port of the display module
   and watch the print in Mainsail.
 

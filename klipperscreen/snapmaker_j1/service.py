@@ -154,10 +154,14 @@ class Panel(ScreenPanel):
         size = self._gtk.img_scale * self.bts
         box = Gtk.Box(spacing=self._gtk.font_size // 2)
         box.pack_start(self._gtk.Image(image, size, size), False, False, 0)
-        box.pack_start(Gtk.Label(label=name, xalign=0), False, False, 0)
-        temp = Gtk.Label(label="-", xalign=1, hexpand=True)
-        temp.set_margin_end(self._gtk.font_size)
-        box.pack_end(temp, True, True, 0)
+        # The name gives way (ellipsized) so the temperature keeps its
+        # distance from the right edge
+        box.pack_start(Gtk.Label(label=name, xalign=0, hexpand=True,
+                                 ellipsize=Pango.EllipsizeMode.END),
+                       True, True, 0)
+        temp = Gtk.Label(label="-", xalign=1)
+        temp.set_margin_end(round(self._gtk.font_size * 1.5))
+        box.pack_end(temp, False, False, 0)
         label = Gtk.Button(hexpand=True, vexpand=True)
         label.add(box)
         for css in ("graph_label_" + heater, "graph_label"):

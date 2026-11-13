@@ -25,10 +25,9 @@ from . import settings, style
 PANEL = "snapmaker_service"
 CONTROL = "snapmaker_service"
 TARGETS = "service_targets"
-# Short names as on the stock display (the column is narrow)
-HEATERS = (("extruder", "Nozzle L", 220, 0),
-           ("extruder1", "Nozzle R", 220, 1),
-           ("heater_bed", "Bed", 60, None))
+HEATERS = (("extruder", "Left Nozzle", 220, 0),
+           ("extruder1", "Right Nozzle", 220, 1),
+           ("heater_bed", "Heater Bed", 60, None))
 # Load and unload once the nozzle is this close to its target
 READY_MARGIN = 3
 MIN_EXTRUDE_TEMP = 170
@@ -149,23 +148,26 @@ class Panel(ScreenPanel):
     # A heater: name, current temperature, target, ON/OFF and for the
     # nozzles Load and Unload
     def _heater_row(self, row, heater, name, tool):
-        # Name and current temperature as on the main menu: the heater's
-        # icon and color, a tap sets the target
+        # Name and current temperature in one tile, as the heaters of the
+        # main menu (icon, color bar); a tap sets the target
         image = ("bed" if tool is None else "extruder-%d" % (tool,))
-        label = self._gtk.Button(image, name, None, self.bts,
-                                 Gtk.PositionType.LEFT, 1)
-        label.set_alignment(0, 0.5)
+        size = self._gtk.img_scale * self.bts
+        box = Gtk.Box(spacing=self._gtk.font_size // 2)
+        box.pack_start(self._gtk.Image(image, size, size), False, False, 0)
+        box.pack_start(Gtk.Label(label=name, xalign=0), False, False, 0)
+        temp = Gtk.Label(label="-", xalign=1, hexpand=True)
+        temp.set_margin_end(self._gtk.font_size)
+        box.pack_end(temp, True, True, 0)
+        label = Gtk.Button(hexpand=True, vexpand=True)
+        label.add(box)
         for css in ("graph_label_" + heater, "graph_label"):
             label.get_style_context().add_class(css)
         label.connect("clicked", self._edit, heater)
-        temp = self._gtk.Button(label="-", lines=1)
-        temp.connect("clicked", self._edit, heater)
         target = self._gtk.Button(None, "", "color4")
         target.connect("clicked", self._edit, heater)
         power = self._gtk.Button(None, _("ON"), "color1")
         power.connect("clicked", self._power, heater)
-        self.grid.attach(label, 0, row, 1, 1)
-        self.grid.attach(temp, 1, row, 1, 1)
+        self.grid.attach(label, 0, row, 2, 1)
         self.grid.attach(target, 2, row, 1, 1)
         self.grid.attach(power, 3, row, 1, 1)
         widgets = {"temp": temp, "target": target, "power": power}

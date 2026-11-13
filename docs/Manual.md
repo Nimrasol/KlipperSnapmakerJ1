@@ -77,8 +77,7 @@ page.
 - **Back:** returns to the previous page.
 - **Circle:** returns to the main menu.
 - **Bell:** opens the notifications, for example messages from Klipper.
-- **Wrench** (main menu only): opens the [Service](#service) page; there
-  the thermometer leads back to the main menu.
+- **Wrench** (main menu only): opens the [Service](#service) page.
 
 During a print the action bar also shows the emergency stop.  There is no
 shutdown button: the J1 is switched off with its power switch.

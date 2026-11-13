@@ -50,18 +50,18 @@ def _wrench_pixbuf(size):
 
 
 class ServiceButton:
-    # The button in the action bar: on the main menu it opens the service
-    # page (wrench), on the service page it returns (thermometer)
+    # The wrench in the action bar of the main menu opens the service page
+    # (Back and Home lead back)
     def __init__(self, screen):
         self.screen = screen
         base = screen.base_panel
         size = screen.gtk.img_scale * base.abscale
-        self.wrench = Gtk.Image.new_from_pixbuf(_wrench_pixbuf(size * 1.2))
-        self.temps = screen.gtk.Image("heat-up", size * 1.4, size * 1.4)
-        button = screen.gtk.Button("heat-up", scale=base.abscale)
+        button = screen.gtk.Button(None, scale=base.abscale)
+        button.set_image(
+            Gtk.Image.new_from_pixbuf(_wrench_pixbuf(size * 1.2)))
+        button.set_always_show_image(True)
         button.set_no_show_all(True)
         button.hide()
-        button.set_always_show_image(True)
         button.connect("clicked", self._clicked)
         base.control[CONTROL] = button
         base.action_bar.add(button)
@@ -73,30 +73,14 @@ class ServiceButton:
 
         def _add_content(panel):
             add_content(panel)
-            self._update(panel)
+            button.set_visible(
+                panel is not None
+                and panel is self.screen.panels.get("main_menu"))
 
         base.add_content = _add_content
 
-    def _service_open(self):
-        panels = self.screen._cur_panels
-        return bool(panels) and panels[-1] == PANEL
-
-    def _update(self, panel):
-        panels = self.screen.panels
-        if panel is not None and panel is panels.get(PANEL):
-            self.button.set_image(self.temps)
-            self.button.show()
-        elif panel is not None and panel is panels.get("main_menu"):
-            self.button.set_image(self.wrench)
-            self.button.show()
-        else:
-            self.button.hide()
-
     def _clicked(self, widget):
-        if self._service_open():
-            self.screen._menu_go_back()
-        else:
-            self.screen.show_panel(PANEL, _("Service"))
+        self.screen.show_panel(PANEL, _("Service"))
 
 
 class Panel(ScreenPanel):

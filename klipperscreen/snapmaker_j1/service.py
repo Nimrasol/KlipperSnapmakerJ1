@@ -123,15 +123,28 @@ class Panel(ScreenPanel):
         self.buttons["nozzles"].connect("clicked", self._nozzles)
         self.buttons["home"].connect("clicked", self._home)
         self.buttons["grease"].connect("clicked", self._grease)
-        for i, key in enumerate(("nozzles", "home", "grease")):
-            self.grid.attach(self.buttons[key], i * 2, len(HEATERS), 2, 1)
-        # Beside the bed (it has no Load and Unload)
+        # Both nozzles at once, beside the bed (it has no Load and Unload)
+        self.both = {
+            "load": self._gtk.Button("arrow-down", _("Load Both"), "color3"),
+            "unload": self._gtk.Button("arrow-up", _("Unload Both"),
+                                       "color2"),
+        }
+        self.both["load"].connect("clicked", self._filament,
+                                  "SNAPMAKER_LOAD_FILAMENT", 2)
+        self.both["unload"].connect("clicked", self._filament,
+                                    "SNAPMAKER_UNLOAD_FILAMENT", 2)
+        self.grid.attach(self.both["load"], 4, 2, 1, 1)
+        self.grid.attach(self.both["unload"], 5, 2, 1, 1)
         fine = self._gtk.Button("fine-tune", _("Fine Tuning"), "color4")
         fine.connect("clicked", self._fine_tune)
         off = self._gtk.Button("cool-down", _("All Off"), "color1")
         off.connect("clicked", self._all_off)
-        self.grid.attach(fine, 4, 2, 1, 1)
-        self.grid.attach(off, 5, 2, 1, 1)
+        row = len(HEATERS)
+        self.grid.attach(self.buttons["nozzles"], 0, row, 1, 1)
+        self.grid.attach(self.buttons["home"], 1, row, 1, 1)
+        self.grid.attach(self.buttons["grease"], 2, row, 2, 1)
+        self.grid.attach(fine, 4, row, 1, 1)
+        self.grid.attach(off, 5, row, 1, 1)
 
         self.keypad = Keypad(screen, self._keypad_ok, self._keypad_close,
                              entry_max=3)
@@ -206,6 +219,7 @@ class Panel(ScreenPanel):
     def _refresh(self):
         if self._printer is None:
             return
+        ready_all = {}
         for heater, widgets in self.rows.items():
             temp = self._stat(heater, "temperature")
             current = self._stat(heater, "target")
@@ -224,6 +238,10 @@ class Panel(ScreenPanel):
                          and temp >= current - READY_MARGIN)
                 widgets["load"].set_sensitive(ready)
                 widgets["unload"].set_sensitive(ready)
+                ready_all[heater] = ready
+        both = all(ready_all.values())
+        self.both["load"].set_sensitive(both)
+        self.both["unload"].set_sensitive(both)
 
     # Target temperatures
     def _max_temp(self, heater):
@@ -282,6 +300,7 @@ class Panel(ScreenPanel):
     # Filament, service, homing, grease
     def _filament(self, widget, macro, tool):
         # At the nozzle service position (moves there unless it is there)
+        # TOOL=2: both at once, each at its own target
         heater = "extruder1" if tool == 1 else "extruder"
         self._screen._ws.api.gcode_script(
             "%s TOOL=%d TEMP=%d SERVICE=1" % (macro, tool,

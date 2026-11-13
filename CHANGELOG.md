@@ -10,7 +10,7 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
-## Unreleased
+## v1.4.0 (2026-11-13)
 
 - **Elapsed time without pauses:** on the print page of the touch screen,
   **Elapsed** stops while a print is paused (for example after a filament

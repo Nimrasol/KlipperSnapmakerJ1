@@ -125,6 +125,13 @@ class Panel(ScreenPanel):
         self.buttons["grease"].connect("clicked", self._grease)
         for i, key in enumerate(("nozzles", "home", "grease")):
             self.grid.attach(self.buttons[key], i * 2, len(HEATERS), 2, 1)
+        # Beside the bed (it has no Load and Unload)
+        fine = self._gtk.Button("fine-tune", _("Fine Tuning"), "color4")
+        fine.connect("clicked", self._fine_tune)
+        off = self._gtk.Button("cool-down", _("All Off"), "color1")
+        off.connect("clicked", self._all_off)
+        self.grid.attach(fine, 4, 2, 1, 1)
+        self.grid.attach(off, 5, 2, 1, 1)
 
         self.keypad = Keypad(screen, self._keypad_ok, self._keypad_close,
                              entry_max=3)
@@ -259,18 +266,30 @@ class Panel(ScreenPanel):
 
     # Filament, service, homing, grease
     def _filament(self, widget, macro, tool):
+        # At the nozzle service position (moves there unless it is there)
         heater = "extruder1" if tool == 1 else "extruder"
         self._screen._ws.api.gcode_script(
-            "%s TOOL=%d TEMP=%d" % (macro, tool,
-                                    self._stat(heater, "target")))
+            "%s TOOL=%d TEMP=%d SERVICE=1" % (macro, tool,
+                                              self._stat(heater, "target")))
+        self._set_serviced(True)
+
+    def _set_serviced(self, serviced):
+        self.serviced = serviced
+        self.buttons["nozzles"].set_label(_("Park Nozzles") if serviced
+                                          else _("Nozzle Service"))
 
     def _nozzles(self, widget):
-        self.serviced = not self.serviced
         self._screen._ws.api.gcode_script(
-            "SNAPMAKER_NOZZLE_SERVICE" if self.serviced
-            else "SNAPMAKER_NOZZLE_PARK")
-        widget.set_label(_("Park Nozzles") if self.serviced
-                         else _("Nozzle Service"))
+            "SNAPMAKER_NOZZLE_PARK" if self.serviced
+            else "SNAPMAKER_NOZZLE_SERVICE")
+        self._set_serviced(not self.serviced)
+
+    def _fine_tune(self, widget):
+        self._screen.show_panel("fine_tune", _("Fine Tuning"))
+
+    def _all_off(self, widget):
+        for heater, _name, _default, _tool in HEATERS:
+            self._set_target(heater, 0)
 
     def _home(self, widget):
         self._screen._ws.api.gcode_script("G28")
@@ -298,8 +317,7 @@ class Panel(ScreenPanel):
         def response(dialog, response_id):
             self._gtk.remove_dialog(dialog)
             if response_id == Gtk.ResponseType.OK:
-                self.serviced = False
-                self.buttons["nozzles"].set_label(_("Nozzle Service"))
+                self._set_serviced(False)
                 self._screen._ws.api.gcode_script(
                     "SNAPMAKER_DISTRIBUTE_GREASE")
 

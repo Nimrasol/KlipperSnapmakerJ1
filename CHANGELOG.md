@@ -10,6 +10,15 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
+## Unreleased
+
+- **Webcam on phones:** the webcam panel is now also shown on the
+  Mainsail dashboard of phones, where Mainsail hides it by default.  This
+  applies when Mainsail is set up for the first time; on a printer that is
+  already set up, switch it on under **Settings → Dashboard → Mobile**.
+- **Manual:** on Android, the browser needs the permission **Nearby
+  devices** to open Mainsail (`ERR_TOO_MANY_RETRIES` without it).
+
 ## v1.4.0 (2026-11-13)
 
 - **Elapsed time without pauses:** on the print page of the touch screen,

@@ -53,7 +53,9 @@ OLD_MACROS = [
 
 PANEL = "macrogroup_" + GROUP_ID
 # The first column of each dashboard layout as Mainsail (v2.19) has it by
-# default
+# default, except the webcam: Mainsail hides it on phones, here it is shown
+# there too (Mainsail lists a camera only while its stream runs, so the
+# panel is never empty)
 LAYOUTS = {
     "mobileLayout": ["webcam", "toolhead-control", "extruder-control",
                      "macros", "machine-settings", "miscellaneous",
@@ -65,7 +67,7 @@ LAYOUTS = {
     "widescreenLayout1": ["toolhead-control", "extruder-control", "macros",
                           "miscellaneous"],
 }
-HIDDEN = {"mobileLayout": ["webcam", "miniconsole"]}
+HIDDEN = {"mobileLayout": ["miniconsole"]}
 
 
 def _layout(name):

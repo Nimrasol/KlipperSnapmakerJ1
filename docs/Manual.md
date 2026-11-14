@@ -785,6 +785,11 @@ the title bar shows it.  `.local` needs mDNS, which some networks block
 the IP address.  Touch screen and web interface work at the same time
 and always show the same state.
 
+On Android, the browser needs the permission **Nearby devices** to reach
+the printer: without it, even the IP address fails (Chrome shows
+`ERR_TOO_MANY_RETRIES`) although the phone is in the same network.  Allow
+it under **Settings → Apps → (browser) → Permissions → Nearby devices**.
+
 ### Dashboard
 
 ![Mainsail dashboard](manual/web-dashboard.png)
@@ -952,7 +957,10 @@ does not.
 ![Webcam page in Mainsail](manual/web-webcam.png)
 
 The stream starts when the camera is plugged in and stops when it is
-unplugged; meanwhile Mainsail does not show the camera.  It runs at
+unplugged; meanwhile Mainsail does not show the camera.  Mainsail has its
+own dashboard layout for phones; there the webcam is shown too.  If it is
+missing on a phone, switch it on in Mainsail under **Settings →
+Dashboard → Mobile** (eye symbol next to **Webcam**).  It runs at
 1280 x 720 with 15 frames per second, which needs about 1% of the
 processor of the display module.  The touch screen itself does not show
 the camera.

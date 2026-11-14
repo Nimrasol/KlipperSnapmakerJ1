@@ -18,6 +18,9 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   already set up, switch it on under **Settings → Dashboard → Mobile**.
 - **Manual:** on Android, the browser needs the permission **Nearby
   devices** to open Mainsail (`ERR_TOO_MANY_RETRIES` without it).
+- **Manual:** how to reach Mainsail from outside the home network with a
+  Cloudflare Tunnel behind a Cloudflare Access login, set up by hand;
+  KlipperSnapmakerJ1 itself is not changed.
 
 ## v1.4.0 (2026-11-13)
 

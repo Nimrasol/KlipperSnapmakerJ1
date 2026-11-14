@@ -34,6 +34,7 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
 - [Safety and error messages](#safety-and-error-messages)
 - [Web interface](#web-interface)
   - [Webcam](#webcam)
+  - [Access from outside the home network](#access-from-outside-the-home-network)
 - [Slicer](#slicer)
 - [What is implemented](#what-is-implemented)
 
@@ -964,6 +965,78 @@ Dashboard → Mobile** (eye symbol next to **Webcam**).  It runs at
 1280 x 720 with 15 frames per second, which needs about 1% of the
 processor of the display module.  The touch screen itself does not show
 the camera.
+
+### Access from outside the home network
+
+KlipperSnapmakerJ1 itself makes the printer reachable only in the home
+network.  This section shows one way to reach Mainsail from anywhere with
+a **Cloudflare Tunnel**, set up by hand; nothing in KlipperSnapmakerJ1 is
+changed for it, and its updates do not touch it.
+
+**Mainsail has no login.**  Whoever reaches it controls the printer:
+heaters, motors, files.  Never make it reachable from the Internet without
+an access check in front of it; here that is **Cloudflare Access**, which
+lets only you in after a login (GitHub in this example).
+
+You need a Cloudflare account (the free plan and the free Zero Trust plan
+are enough) and a domain whose DNS is managed by Cloudflare.  The tunnel
+is an outgoing connection from the printer, so no port is opened on the
+router.
+
+1. **Login method:** in the Zero Trust dashboard
+   (`one.dash.cloudflare.com`), **Settings → Authentication → Login
+   methods → Add new → GitHub** (in newer dashboards **Integrations →
+   Identity providers**).  In GitHub, create an OAuth app under
+   **Settings → Developer settings → OAuth Apps → New OAuth App** with
+   - Homepage URL: `https://<team>.cloudflareaccess.com`
+   - Authorization callback URL:
+     `https://<team>.cloudflareaccess.com/cdn-cgi/access/callback`
+
+   `<team>` is the team domain of your Zero Trust account.  Enter the
+   client ID and a new client secret of the OAuth app in Cloudflare,
+   save, and check it with **Test**.
+2. **Access check first:** **Access → Applications → Add an application
+   → Self-hosted** (newer: **Access controls → Applications**).  Public
+   hostname for example `j1.example.com`.  Add a policy with action
+   **Allow** and **Include → Emails** with the e-mail address of your
+   GitHub account; not **Everyone**, which would let in anybody with a
+   GitHub account.  Under login methods allow only **GitHub**.  The
+   session duration (for example one week) sets how often you log in
+   again.
+3. **Tunnel:** **Networks → Tunnels → Create a tunnel → Cloudflared**,
+   any name.  Cloudflare shows an install command with a token
+   (`cloudflared service install eyJ...`); the token is the same for every
+   operating system.  Keep it secret: it gives access to the tunnel.
+4. **On the printer**, logged in over SSH (user `pi`), install
+   cloudflared for the processor of the display module (`armhf`) and the
+   tunnel as a service, which starts with the printer:
+
+   ```
+   curl -fsSL -o /tmp/cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-armhf.deb
+   sudo dpkg -i /tmp/cloudflared.deb
+   sudo cloudflared service install <token>
+   ```
+
+   The tunnel shows as **Healthy** in the dashboard.
+5. **Route:** in the tunnel, **Public Hostname** (newer: **Published
+   application routes**) **→ Add**: subdomain `j1`, your domain, service
+   `http://localhost:80` (`http`, not `https`: Cloudflare encrypts the
+   connection to the browser).  Do not leave the subdomain empty, or the
+   domain itself leads to the printer.
+
+**Check it** in a private browser window or on a phone with mobile data:
+`https://j1.example.com` must show the Cloudflare login and nothing of
+Mainsail before you log in.  After the login, Mainsail and the webcam work
+as at home.
+
+- The tunnel survives updates of KlipperSnapmakerJ1, Klipper, Moonraker,
+  KlipperScreen and Mainsail.  Reinstalling the display system or going
+  back to the stock firmware removes it; step 4 sets it up again with the
+  same token.
+- cloudflared does not update itself; installing a newer package as in
+  step 4 (without the last line) keeps the tunnel.
+- To remove it: `sudo cloudflared service uninstall` and
+  `sudo apt remove cloudflared`, then delete the tunnel in the dashboard.
 
 ## Slicer
 

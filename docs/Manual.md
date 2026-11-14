@@ -1031,6 +1031,8 @@ router.
 Mainsail before you log in.  After the login, Mainsail and the webcam work
 as at home.
 
+<img src="manual/web-phone.jpg" width="300" alt="Mainsail in Chrome on an Android phone, with the webcam on the dashboard">
+
 - The tunnel survives updates of KlipperSnapmakerJ1, Klipper, Moonraker,
   KlipperScreen and Mainsail.  Reinstalling the display system or going
   back to the stock firmware removes it; step 4 sets it up again with the

@@ -1007,7 +1007,9 @@ router.
    any name.  Cloudflare shows an install command with a token
    (`cloudflared service install eyJ...`); the token is the same for every
    operating system.  Keep it secret: it gives access to the tunnel.
-4. **On the printer**, logged in over SSH (user `pi`), install
+4. **On the printer**, logged in over SSH (`ssh pi@snapmaker-j1.local`
+   or the IP address, password `klipper`; change it with `passwd`, at the
+   latest now that the printer is reachable from outside), install
    cloudflared for the processor of the display module (`armhf`) and the
    tunnel as a service, which starts with the printer:
 

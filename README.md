@@ -4,6 +4,10 @@
 <img src="docs/img/klipper-snapmaker-j1.png" width="900" alt="Snapmaker J1 running Klipper">
 </p>
 
+<p align="center">
+<a href="docs/Manual.md"><img src="https://img.shields.io/badge/User_manual-every_screen,_step_by_step-ff8a00?style=for-the-badge&logo=bookstack&logoColor=white" alt="User manual: every screen, step by step"></a>
+</p>
+
 <table>
 <tr>
 <td>
@@ -39,7 +43,7 @@ guided calibrations, the pictures and the animations of the J1.  No extra
 Raspberry Pi, no extra screen, no wiring.
 
 <p align="center">
-<img src="docs/manual/main-menu.png" width="860" alt="Main menu on the J1 touch screen">
+<img src="docs/manual/main-menu.png" width="860" alt="Home page on the J1 touch screen">
 </p>
 
 ## Why Klipper on the J1
@@ -52,8 +56,9 @@ Raspberry Pi, no extra screen, no wiring.
   Klipper community.
 - **A web interface.** Mainsail in every browser of your network: watch
   and control prints, upload files, edit the configuration.
-- **A service page.** Heat the nozzles, load and unload filament (both
-  at once), move the nozzles in for cleaning, distribute fresh grease.
+- **A home page for the daily work.** Heat the nozzles and the bed
+  with temperature gauges, load and unload filament (both at once), move
+  the nozzles in for cleaning, distribute fresh grease.
 - **A webcam.** Plug a USB webcam into the USB port of the display module
   and watch the print in Mainsail.
 
@@ -172,7 +177,7 @@ installer) and the Klipper system in the folder `install`.
 
 > [!CAUTION]
 > **This takes a while: about 7 minutes.  Do not pull the USB
-> stick and do not switch the printer off until the Klipper main menu
+> stick and do not switch the printer off until the Klipper home page
 > appears.**  The printer restarts by itself on the way and the screen
 > stays dark for a while; that is normal.  A stick pulled in the middle can
 > leave the printer unable to start.
@@ -192,7 +197,7 @@ installer) and the Klipper system in the folder `install`.
      the files on the stick and writes the Klipper system (a few
      minutes);
    - the first start of Klipper installs the Klipper firmware on the
-     main controller (about a minute), then the Klipper main menu
+     main controller (about a minute), then the Klipper home page
      appears.
 4. **Connect to your network** under **More → Network → WLAN**
    (required).  The clock, the updates and the web interface need it;

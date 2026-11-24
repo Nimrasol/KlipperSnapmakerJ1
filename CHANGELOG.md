@@ -19,38 +19,28 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   left toolhead active, as in the stock firmware.  Cura files heat T0
   but never select a tool; when the right toolhead was active from
   before, the print stopped at once with "Extrude below minimum temp".
-- **Home page details** (found in a test with an unpractised user):
-  Home All asks first; a grey Load or Unload says on a tap that the
-  nozzle has to be switched on and hot; a heater that is on shows the
-  target it really heats to; the menu button is hidden while the
-  temperature keypad is open (Back from the menu left the keypad
-  without a way back); a refused temperature stays in the field.
-- **Faster loading:** Load feeds at 320 mm/min instead of 240 (stock),
-  on the home page, the extrude panel and the refill dialog.
-- **Temperature pages in the home page style:** the keypad of the
-  home page and its presets sit in containers, the presets as tiles.
-  More → Temperature shows the heaters as on the home page (orange
-  frame when on, an ON/OFF button each), Cooldown became Heaters Off
-  (all heaters).
-- **Printer state on the home page:** the title bar shows Ready,
-  Heating, what runs (eg Loading T0, Homing) or Busy.
+- **New home page** (board #21): the service page becomes the home
+  page of the touch screen.  One tile per heater with the nozzle
+  diameter, the current and the target temperature (a tap shows the
+  target on a keypad with the material presets) and ON/OFF; loading and
+  unloading per nozzle and both (a grey button says on a tap that the
+  nozzle has to be on and hot); Home All (asks first), Nozzle Service,
+  Distribute Grease, Light, **Motors Off** (new, asks first) and Heaters
+  Off; Print, Move and Calibration below.  The title bar shows the
+  printer state: Ready, Heating, what runs (eg Loading T0, Homing) or
+  Busy.  The gear in the action bar opens the menu, which now also
+  holds Temperature (material presets) and Extrude (any length).
+- **More → Temperature in the home page style:** the heaters as on the
+  home page (orange frame when on, ON/OFF each), Cooldown became
+  Heaters Off (all heaters).  During a print ON/OFF is hidden and
+  Heaters Off asks first.
+- **Faster loading:** Load and unload start once the nozzle is 5°C
+  below its target, instead of waiting until the temperature settled
+  within 1°C (a minute or more after the overshoot); Load feeds at
+  320 mm/min instead of 240 (stock), also in the extrude panel and the
+  refill dialog.
 - **WLAN symbol easier to tap:** its tap area in the title bar is larger,
   so the WLAN window opens without hitting the small symbol exactly.
-- **Load and unload start sooner:** the buttons are ready and the load
-  macros start once the nozzle is 5°C below its target, instead of
-  waiting until the temperature settled within 1°C (a minute or more
-  after the overshoot).
-- **New home page** (board #21): the service page becomes the home
-  page of the touch screen.  One tile per heater with the current and
-  the target temperature (a tap shows the target on a keypad with the
-  material presets) and ON/OFF, loading
-  and unloading per nozzle and both, the service tasks (Home All,
-  Nozzle Service, Distribute Grease, Light) and Print, Move and
-  Calibration on one page, without the temperature graph.  New:
-  **Motors Off** (with a confirmation) and the nozzle diameter per
-  nozzle.  Motors Off and Heaters Off are framed in red.  The
-  gear in the action bar opens the menu, which now also holds
-  Temperature (material presets) and Extrude (any length).
 - **Case light during a print:** More → Light has "Dim after (Printing)"
   and "Dim to (Printing)", as the screen settings, for example to keep the print lit
   for the webcam.  The default "As without print" keeps the current

@@ -759,9 +759,9 @@ class Panel(ScreenPanel):
         elif kind == F.PRINT:
             self._screen.snapmaker_calibration_print = True
             # The stock calibration prints skip the nozzle diameter check
-            self._gcode("SNAPMAKER_CAL_MATERIAL MATERIAL=%s\n"
-                        "SDCARD_PRINT_FILE FILENAME=\"%s/%s\" NOZZLE_CHECK=0"
-                        % (self.material, F.GCODE_DIR, step["file"]))
+            self._gcode("SDCARD_PRINT_FILE FILENAME=\"%s/%s\" NOZZLE_CHECK=0"
+                        " CAL_MATERIAL=%s"
+                        % (F.GCODE_DIR, step["file"], self.material))
         elif kind == F.RUN:
             if step.get("done_text"):
                 self.step_widgets["text"].set_label(step["done_text"])

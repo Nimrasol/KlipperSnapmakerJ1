@@ -287,6 +287,7 @@ Check that the print is still on the plate before you resume.
   means the heater is on, **ON/OFF** switches it (on to the target the
   home page keeps).  Tap the name of one or more heaters (tinted when
   selected), then tap the temperature to enter one or choose a preset.
+  During a print ON/OFF is hidden (no one-tap OFF).
 - **Presets:** each one heats both nozzles and the bed:
 
   | Preset | Nozzles | Bed |
@@ -296,7 +297,8 @@ Check that the print is still on the plate before you resume.
   | PETG | 240 °C | 80 °C |
   | FLEX | 210 °C | 60 °C |
 
-- **Heaters Off:** turns all heaters off.
+- **Heaters Off:** turns all heaters off; during a print only after a
+  question (the print fails).
 
 The nozzles can be set up to 300 °C and the bed up to 100 °C, as on the
 stock firmware.  The PT100 sensors and the heater limits are those of the

@@ -55,7 +55,8 @@ class Toolhead:
     def get_kinematics(self):
         return self.kin
     def get_status(self, eventtime):
-        return {"homed_axes": "xyz"}
+        return {"homed_axes": "xyz", "axis_minimum": [0., 0., -5., 0.],
+                "axis_maximum": [300., 200., ENDSTOP, 0.]}
 
 
 class Printer:
@@ -106,6 +107,19 @@ class ZOrigin(unittest.TestCase):
         p._store_z_origin(Gcmd(), 0.05)
         self.assertAlmostEqual(p.printer.saved["snap_j1_z_endstop"],
                                ENDSTOP - 0.05)
+
+    def test_z_touch_stops_past_the_expected_bed(self):
+        # A nozzle sensor that misses the bed: the touch ends 3 mm below the
+        # expected bare bed (plate surface minus 5 mm plate, later the
+        # measured reference) instead of pushing on to the session limit
+        p = make_probe(10.)
+        p.datum = None
+        self.assertAlmostEqual(p._limited_target(2, -1, 50.)[2], -8.)
+        p.datum = -4.6
+        self.assertAlmostEqual(p._limited_target(2, -1, 50.)[2], -7.6)
+        # Outside a calibration session the travel range applies
+        p.cal_active = False
+        self.assertAlmostEqual(p._limited_target(2, -1, 50.)[2], -5.)
 
 
 if __name__ == "__main__":

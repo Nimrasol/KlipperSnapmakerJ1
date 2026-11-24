@@ -947,8 +947,9 @@ when not all axes are homed, as the stock firmware does at the start of
 a print (the end G-code still homes to park the carriages; the
 calibration menu has homed the printer already).  Their temperature
 commands become `_SNAPMAKER_CAL_TEMP CMD= T= S=`: the files are sliced
-for PLA, and `SNAPMAKER_CAL_MATERIAL MATERIAL=PLA|PETG|ABS` (sent by the
-calibration page before the print) raises the nozzle temperatures by
+for PLA, and `SNAPMAKER_CAL_MATERIAL MATERIAL=PLA|PETG|ABS` (the
+calibration page passes `CAL_MATERIAL=` to `SDCARD_PRINT_FILE`; every
+other print resets it to PLA) raises the nozzle temperatures by
 0, 30 or 40 °C and sets the bed to the material's temperature (PLA
 keeps the file's values).  The manual XY test print was converted the
 same way.

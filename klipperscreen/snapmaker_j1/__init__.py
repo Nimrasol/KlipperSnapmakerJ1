@@ -33,9 +33,6 @@ STOCK_PANEL = "snapmaker_stock"
 # Order of the menus (KlipperScreen shows them in the order of the config
 # sections, its defaults first); entries not named here follow
 MENU_ORDER = {
-    # The print first, then preparing it, the setup and More last
-    ("__main", ""): ("print", "temperature", "extrude", "move",
-                     "snapmaker_calibration", "more"),
     # Printing, settings of the printer, tools and maintenance
     # The home page shows Print, Move and Calibration; Temperature (the
     # presets) and Extrude (any length) are here
@@ -894,8 +891,7 @@ def _patch_temperature(panel_class):
             off = self._gtk.Button("cool-down", _("Heaters Off"), "color4",
                                    self.bts, Gtk.PositionType.LEFT, 1)
             off.get_style_context().add_class("snap-switch-off")
-            off.connect("clicked", lambda w: self._screen._ws.api
-                        .gcode_script("TURN_OFF_HEATERS"))
+            off.connect("clicked", _all_off, self)
             right.attach(off, 0, 0, 2, 1)
         if self._screen.vertical_mode:
             return right
@@ -917,6 +913,7 @@ def _patch_temperature(panel_class):
         power = self._gtk.Button(None, _("ON"), "color1", lines=1)
         power.get_style_context().add_class("snap-heater-power")
         power.set_size_request(self._gtk.font_size * 4, -1)
+        power.set_no_show_all(True)
         power.connect("clicked", _power, self, device)
         grid = self.labels["devices"]
         grid.attach(power, 2, grid.child_get_property(
@@ -925,6 +922,19 @@ def _patch_temperature(panel_class):
         _show_power(self, device)
         grid.show_all()
         return added
+
+    def _printing(self):
+        return self._printer.state in ("printing", "paused")
+
+    def _all_off(widget, self):
+        # During a print (the page opens from the print page) only after a
+        # question: the bed goes cold and the print comes loose
+        if _printing(self):
+            self._screen._confirm_send_action(
+                widget, _("Switch all heaters off? The print will fail."),
+                "printer.gcode.script", {"script": "TURN_OFF_HEATERS"})
+        else:
+            self._screen._ws.api.gcode_script("TURN_OFF_HEATERS")
 
     def _power(widget, self, device):
         if (self._printer.get_stat(device, "target") or 0) > 0:
@@ -940,6 +950,13 @@ def _patch_temperature(panel_class):
         on = (self._printer.get_stat(device, "target") or 0) > 0
         widgets = self.devices[device]
         widgets["power"].set_label(_("OFF") if on else _("ON"))
+        # No one-tap OFF during a print; the temperature ends the block then
+        printing = _printing(self)
+        widgets["power"].set_visible(not printing)
+        temp = widgets["temp"].get_style_context()
+        temp.remove_class("snap-heater-power" if not printing
+                          else "snap-heater-mid")
+        temp.add_class("snap-heater-power" if printing else "snap-heater-mid")
         for key in ("name_button", "temp", "power"):
             context = widgets[key].get_style_context()
             if on:

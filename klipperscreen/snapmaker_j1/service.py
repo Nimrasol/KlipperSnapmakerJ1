@@ -53,20 +53,6 @@ def _white_icon(themedir, name, size):
     return loader.get_pixbuf()
 
 
-def temperature_keypad(keypad):
-    # Back closes the keypad as on every page (not its X); whole degrees
-    # only (no point); the current target is the grey placeholder, which
-    # typing replaces and OK alone keeps
-    for button in (keypad.top_box.get_children()[1:]
-                   + [b for b in keypad.get_children()[1].get_children()
-                      if b.get_label() == "."]):
-        button.set_no_show_all(True)
-        button.hide()
-    entry = keypad.entry
-    keypad.get_value = lambda: float(
-        entry.get_text() or entry.get_placeholder_text() or "nan")
-
-
 class MenuButton:
     # The menu button in the action bar of the home page opens the menu of
     # KlipperScreen (More); the home page shows no title and no heaters in
@@ -115,6 +101,7 @@ class Panel(ScreenPanel):
         self.ready = {}
         self.keypad_heater = None
         self.serviced = False
+        self.print_state = None
         # What this page started (title bar while Klipper is busy with it)
         self.task = None
         self.task_seen = False
@@ -214,7 +201,17 @@ class Panel(ScreenPanel):
 
         self.keypad = Keypad(screen, self._keypad_ok, self._keypad_close,
                              entry_max=3)
-        temperature_keypad(self.keypad)
+        # Back closes the keypad as on every page (not its X); whole
+        # degrees only (no point); the current target is the grey
+        # placeholder, which typing replaces and OK alone keeps
+        for button in (self.keypad.top_box.get_children()[1:]
+                       + [b for b in self.keypad.get_children()[1]
+                          .get_children() if b.get_label() == "."]):
+            button.set_no_show_all(True)
+            button.hide()
+        entry = self.keypad.entry
+        self.keypad.get_value = lambda: float(
+            entry.get_text() or entry.get_placeholder_text() or "nan")
         # A refused value stays for correction (_edit empties the entry)
         self.keypad.clear = lambda: None
         # The 0 takes the place of the hidden point
@@ -330,6 +327,13 @@ class Panel(ScreenPanel):
             "<small>→ %d°C</small>" % (current or self.targets[heater],))
 
     def activate(self):
+        # A print ran meanwhile: it moved the nozzles off the service
+        # position
+        state = self._printer.get_stat("print_stats", "state") \
+            if self._printer else None
+        if state != self.print_state and state != "standby":
+            self._set_serviced(False)
+        self.print_state = state
         self._refresh()
 
     def process_update(self, action, data):
@@ -518,43 +522,33 @@ class Panel(ScreenPanel):
         self._set_serviced(not self.serviced)
 
     def _all_off(self, widget):
-        for heater, _name, _default, _tool in HEATERS:
-            self._set_target(heater, 0)
+        self._screen._ws.api.gcode_script("TURN_OFF_HEATERS")
 
     def _home(self, widget):
-        label = Gtk.Label(hexpand=True, vexpand=True,
-                          halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
-                          wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR)
-        label.set_text(_("Home all axes? The nozzles and the bed move."))
-        buttons = [
-            {"name": _("Accept"), "response": Gtk.ResponseType.OK,
-             "style": "dialog-info"},
-            {"name": _("Cancel"), "response": Gtk.ResponseType.CANCEL,
-             "style": "dialog-error"},
-        ]
-
-        def response(dialog, response_id):
-            self._gtk.remove_dialog(dialog)
-            if response_id == Gtk.ResponseType.OK:
-                self._run("G28", _("Homing"))
-
-        self._gtk.Dialog("KlipperScreen", buttons, label, response)
+        self._ask(_("Home All"),
+                  _("Home all axes? The nozzles and the bed move."),
+                  _("Accept"), "G28", _("Homing"))
 
     def _grease(self, widget):
+        self._ask(_("Distribute Grease"),
+                  _("Moves both nozzles, the bed and the Z axis once over"
+                    " their travel to spread fresh grease (about a minute)."
+                    " Tap again for another run.") + "\n\n"
+                  + _("Remove everything from the build plate first."),
+                  _("Start"), "SNAPMAKER_DISTRIBUTE_GREASE",
+                  _("Distributing grease"))
+
+    def _ask(self, title, text, ok, gcode, task):
+        # A question before a command that moves the axes (the nozzles
+        # leave the service position)
         label = Gtk.Label(hexpand=True, vexpand=True,
                           halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
                           wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,
                           justify=Gtk.Justification.CENTER,
                           max_width_chars=48)
-        label.set_markup("%s\n\n%s" % (
-            GLib.markup_escape_text(
-                _("Moves both nozzles, the bed and the Z axis once over"
-                  " their travel to spread fresh grease (about a minute)."
-                  " Tap again for another run.")),
-            GLib.markup_escape_text(
-                _("Remove everything from the build plate first."))))
+        label.set_text(text)
         buttons = [
-            {"name": _("Start"), "response": Gtk.ResponseType.OK,
+            {"name": ok, "response": Gtk.ResponseType.OK,
              "style": "dialog-info"},
             {"name": _("Cancel"), "response": Gtk.ResponseType.CANCEL,
              "style": "dialog-secondary"},
@@ -564,7 +558,6 @@ class Panel(ScreenPanel):
             self._gtk.remove_dialog(dialog)
             if response_id == Gtk.ResponseType.OK:
                 self._set_serviced(False)
-                self._run("SNAPMAKER_DISTRIBUTE_GREASE",
-                          _("Distributing grease"))
+                self._run(gcode, task)
 
-        self._gtk.Dialog(_("Distribute Grease"), buttons, label, response)
+        self._gtk.Dialog(title, buttons, label, response)

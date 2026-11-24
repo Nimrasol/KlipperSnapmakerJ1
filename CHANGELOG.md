@@ -12,6 +12,8 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
 
 ## Unreleased
 
+## v1.7.0 (2026-11-24)
+
 - **Cancel from a pause:** a print cancelled while paused (for example
   in Mainsail) no longer leaves the touch screen on the extrude page;
   the print page with the result shows again.
@@ -22,19 +24,20 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
 - **New home page** (board #21): the service page becomes the home
   page of the touch screen.  One tile per heater with the nozzle
   diameter, the current and the target temperature (a tap shows the
-  target on a keypad with the material presets) and ON/OFF; loading and
-  unloading per nozzle and both (a grey button says on a tap that the
-  nozzle has to be on and hot); Home All (asks first), Service (nozzles in
-  for service), Grease (distribute it), Light, **Motors Off** (new, asks first) and Heaters
-  Off; Print, Move and Calibration below.  Three temperature gauges
-  (current temperature as an arc, target as a mark; the number red
-  while heating, green at the target, blue while cooling) take the
-  place of loading and unloading, which slide in on a tap on them.
-  The keypad accepts targets up to the stock limits (300°C nozzles,
-  100°C bed; it took up to 320°C, past the limit of the macros).  The title bar shows the
+  target on a keypad with the material presets) and ON/OFF.  Three
+  temperature gauges (current temperature as an arc, target as a mark;
+  the number red while heating, green at the target, blue while
+  cooling); a tap on them slides in loading and unloading per nozzle and
+  both (a grey button says on a tap that the nozzle has to be on and
+  hot).  Home All (asks first), Service (nozzles in for service), Grease
+  (distribute it), Light, **Motors Off** (new, asks first) and Heaters
+  Off; Print, Move and Calibration below.  The title bar shows the
   printer state: Ready, Heating, what runs (eg Loading T0, Homing) or
   Busy.  The gear in the action bar opens the menu, which now also
   holds Temperature (material presets) and Extrude (any length).
+- **Highest targets as the stock firmware:** the keypads and ON set the
+  nozzles to at most 300°C and the bed to 100°C (the home page keypad
+  took up to 320°C, past the limit of the macros).
 - **More → Temperature in the home page style:** the heaters as on the
   home page (orange frame when on, ON/OFF each), Cooldown became
   Heaters Off (all heaters).  During a print ON/OFF is hidden and
@@ -49,11 +52,11 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   (the patch never applied).
 - **WLAN symbol easier to tap:** its tap area in the title bar is larger,
   so the WLAN window opens without hitting the small symbol exactly.
-- **Case light during a print:** More → Light has "Dim after (Printing)"
-  and "Dim to (Printing)", as the screen settings, for example to keep the print lit
-  for the webcam.  The default "As without print" keeps the current
-  behavior.  With the same time as the screen, the case light dims
-  together with it.
+- **Case light during a print:** More → Light has "Dim after
+  (Printing)" and "Dim to (Printing)", as the screen settings, for
+  example to keep the print lit for the webcam.  The default "As
+  without print" keeps the current behavior.  With the same time as the
+  screen, the case light dims together with it.
 - **Stable Mainsail connection over WLAN:** Wi-Fi power saving is
   switched off.  It delayed packets (pings up to 111ms instead of
   21ms) and Mainsail lost its connection during prints.  The add-on

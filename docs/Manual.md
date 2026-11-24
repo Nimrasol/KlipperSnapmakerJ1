@@ -37,6 +37,7 @@ implemented, configuration) see [Snapmaker_J1.md](Snapmaker_J1.md).
   - [Access from outside the home network](#access-from-outside-the-home-network)
   - [Notifications on the phone](#notifications-on-the-phone)
 - [Slicer](#slicer)
+  - ["Move out of range" at the purge line](#move-out-of-range-at-the-purge-line)
 - [What is implemented](#what-is-implemented)
 
 ## First start: connect the WLAN and calibrate
@@ -1133,10 +1134,12 @@ updates of KlipperSnapmakerJ1 do not change it.
 ## Slicer
 
 Files sliced with a J1 printer profile (for example in OrcaSlicer) print
-without changes: the Snapmaker and Marlin g-codes of the J1 profiles are
-implemented as macros.  The IDEX mode of the file is applied when the
-print starts, and pressure advance (`M900`) and vibration compensation
-(`M593`) set by the slicer are applied too.
+without changes (one exception: the purge lines of Snapmaker Orca, see
+[below](#move-out-of-range-at-the-purge-line)): the Snapmaker and Marlin
+g-codes of the J1 profiles are implemented as macros.  The IDEX mode of
+the file is applied when the print starts, and pressure advance
+(`M900`) and vibration compensation (`M593`) set by the slicer are
+applied too.
 
 To send files from the slicer, add the printer as a Klipper (Moonraker)
 host with `snapmaker-j1.local`.
@@ -1147,6 +1150,22 @@ Y 100**, not at X 150.  The J1 profiles of OrcaSlicer have it so
 (**Printer settings → Basic information → Printable area**: size 324 ×
 200, origin 0 / 0).  A profile with a width of 300 mm places every print
 12 mm left of the center.
+
+### "Move out of range" at the purge line
+
+The J1 profile of **Snapmaker Orca** (start G-code "Update: 20241211")
+draws the purge lines to X -15 (left nozzle) and X 344 (right nozzle).
+The carriages only reach X -13 and about X 337: the stock firmware
+silently stops such moves at the limit, Klipper stops the print with
+`Move out of range: 344.000 ...` (or `-15.000`) before the first layer.
+The J1 profile of OrcaSlicer itself purges to X 0 and 324 and prints
+fine.
+
+Fix it once in the slicer: **Printer settings → Machine G-code →
+Machine start G-code**, replace `-15 : 344` with `-13 : 337` (three
+times, once per purge line), and slice again.  The purge lines end where
+the stock firmware stopped them anyway.  Reported to Snapmaker in
+[snapmaker-profiles#9](https://github.com/Snapmaker/snapmaker-profiles/issues/9).
 
 ## What is implemented
 

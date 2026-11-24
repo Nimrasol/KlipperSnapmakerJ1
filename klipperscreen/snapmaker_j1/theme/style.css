@@ -408,6 +408,10 @@ button.snap-home-nav {
     margin: 0;
 }
 
+button.snap-home-nav label {
+    font-size: 1.25em;
+}
+
 /* Home page: a heater tile and its ON/OFF button form one block; a
  * heater that is on gets one orange frame around both */
 button.snap-heater-tile {

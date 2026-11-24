@@ -29,6 +29,8 @@ WARNING = "#ff6b00"
 SUCCESS = "#18b65b"
 ERROR = "#fc5244"
 HEATING = "#ffd600"
+# A temperature above its target (cooling down to it), readable on the page
+COOLING = "#4a8cff"
 FONT = "Roboto, 'Noto Sans', 'DejaVu Sans', sans-serif"
 
 # The stock pages are 432dp high (480dp screen below the 48dp toolbar);
@@ -260,6 +262,22 @@ CSS = """
 """
 
 _installed = []
+
+
+def rgb(color):
+    # "#rrggbb" as the 0..1 values cairo takes
+    color = color.lstrip("#")
+    return tuple(int(color[i:i + 2], 16) / 255. for i in (0, 2, 4))
+
+
+def temp_color(temp, target, margin):
+    # The temperature of a heater: white without a target, green at it
+    # (within margin), red while heating up, blue while cooling down
+    if not target > 0:
+        return TITLE
+    if abs(temp - target) <= margin:
+        return SUCCESS
+    return ERROR if temp < target else COOLING
 
 
 def dp(screen, value):

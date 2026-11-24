@@ -24,9 +24,14 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   diameter, the current and the target temperature (a tap shows the
   target on a keypad with the material presets) and ON/OFF; loading and
   unloading per nozzle and both (a grey button says on a tap that the
-  nozzle has to be on and hot); Home All (asks first), Nozzle Service,
-  Distribute Grease, Light, **Motors Off** (new, asks first) and Heaters
-  Off; Print, Move and Calibration below.  The title bar shows the
+  nozzle has to be on and hot); Home All (asks first), Service (nozzles in
+  for service), Grease (distribute it), Light, **Motors Off** (new, asks first) and Heaters
+  Off; Print, Move and Calibration below.  Three temperature gauges
+  (current temperature as an arc, target as a mark; the number red
+  while heating, green at the target, blue while cooling) take the
+  place of loading and unloading, which slide in on a tap on them.
+  The keypad accepts targets up to the stock limits (300°C nozzles,
+  100°C bed; it took up to 320°C, past the limit of the macros).  The title bar shows the
   printer state: Ready, Heating, what runs (eg Loading T0, Homing) or
   Busy.  The gear in the action bar opens the menu, which now also
   holds Temperature (material presets) and Extrude (any length).
@@ -39,6 +44,9 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   within 1°C (a minute or more after the overshoot); Load feeds at
   320 mm/min instead of 240 (stock), also in the extrude panel and the
   refill dialog.
+- **Move page:** the X, Y and Z fields no longer touch each other, and
+  the axis inversion switches are hidden in its settings as intended
+  (the patch never applied).
 - **WLAN symbol easier to tap:** its tap area in the title bar is larger,
   so the WLAN window opens without hitting the small symbol exactly.
 - **Case light during a print:** More → Light has "Dim after (Printing)"

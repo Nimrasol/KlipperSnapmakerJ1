@@ -569,14 +569,14 @@ def _patch_progress_ring(screen, panel_class):
         ctx.set_line_width(self._gtk.font_size * 0.75)
         ctx.set_line_cap(cairo.LINE_CAP_ROUND)
         ctx.translate(w / 2, h / 2)
-        ctx.set_source_rgb(*_rgb(style.TRACK))
+        ctx.set_source_rgb(*style.rgb(style.TRACK))
         ctx.arc(0, 0, r, 0, 2 * pi)
         ctx.stroke()
         if self.progress <= 0:
             return
         gradient = cairo.LinearGradient(-r, 0, r, 0)
-        gradient.add_color_stop_rgb(0, *_rgb(style.PRIMARY_START))
-        gradient.add_color_stop_rgb(1, *_rgb(style.PRIMARY_END))
+        gradient.add_color_stop_rgb(0, *style.rgb(style.PRIMARY_START))
+        gradient.add_color_stop_rgb(1, *style.rgb(style.PRIMARY_END))
         ctx.set_source(gradient)
         ctx.arc(0, 0, r, 3 / 2 * pi, 3 / 2 * pi + (self.progress * 2 * pi))
         ctx.stroke()
@@ -588,7 +588,7 @@ def _patch_progress_ring(screen, panel_class):
 def _patch_subscription():
     # The status updates also carry the pause time of the print
     # (snapmaker_j1 print_paused), in the same update as total_duration,
-    # and the saved Z offset (probe z_saved_offset)
+    # the saved Z offset (probe z_saved_offset) and the highest targets
     from ks_includes.MoonrakerApi import MoonrakerApi
     object_subscription = MoonrakerApi.object_subscription
     if getattr(object_subscription, "snapmaker_j1", False):
@@ -603,6 +603,13 @@ def _patch_subscription():
             probe = objects.setdefault("probe", [])
             if isinstance(probe, list) and "z_saved_offset" not in probe:
                 objects["probe"] = probe + ["z_saved_offset"]
+            # The highest targets of the macros (home page keypad and
+            # temperature gauges)
+            state = objects.setdefault("gcode_macro _SNAPMAKER_STATE", [])
+            if isinstance(state, list):
+                objects["gcode_macro _SNAPMAKER_STATE"] = state + [
+                    key for key in ("max_nozzle_target", "max_bed_target")
+                    if key not in state]
         return object_subscription(self, updates)
 
     _object_subscription.snapmaker_j1 = True
@@ -836,9 +843,12 @@ def _patch_move_options(panel_class):
     # graphs of KlipperScreen; the J1 menu already shows the directions of
     # the printer (the bed moves in Z, invert_z is set in
     # snapmaker_j1.conf), so the switches would only confuse
-    add_option = panel_class.add_option
-    if getattr(add_option, "snapmaker_j1", False):
+    # Own mark on the class: add_option is ScreenPanel's, which the settings
+    # patch has already marked (that mark made this patch never apply)
+    if panel_class.__dict__.get("snapmaker_j1_move"):
         return
+    panel_class.snapmaker_j1_move = True
+    add_option = panel_class.add_option
 
     def _add_option(self, boxname, opt_array, opt_name, option,
                     *args, **kwargs):
@@ -847,8 +857,20 @@ def _patch_move_options(panel_class):
         return add_option(self, boxname, opt_array, opt_name, option,
                           *args, **kwargs)
 
-    _add_option.snapmaker_j1 = True
     panel_class.add_option = _add_option
+
+    # The X, Y and Z fields are drawn as buttons by the theme: with
+    # KlipperScreen's no-margin they touched each other
+    init = panel_class.__init__
+
+    def _init(self, *args, **kwargs):
+        init(self, *args, **kwargs)
+        for p in ("pos_x", "pos_y", "pos_z"):
+            self.labels[p].get_style_context().remove_class("no-margin")
+        # Some air between "Move Distance (mm)" and its buttons
+        self.labels["move_dist"].set_margin_bottom(self._gtk.font_size // 3)
+
+    panel_class.__init__ = _init
 
 
 def _patch_temperature(panel_class):
@@ -940,8 +962,9 @@ def _patch_temperature(panel_class):
         if (self._printer.get_stat(device, "target") or 0) > 0:
             target = 0
         else:
-            target = service.settings.get(service.TARGETS, {}).get(
-                device, defaults[device])
+            target = min(service.settings.get(service.TARGETS, {}).get(
+                device, defaults[device]),
+                service.max_target(self._printer, device))
         self._screen._ws.api.gcode_script(
             "SET_HEATER_TEMPERATURE HEATER=%s TARGET=%d" % (device, target))
 
@@ -1180,6 +1203,3 @@ def _labels(widget):
             yield from _labels(child)
 
 
-def _rgb(color):
-    color = color.lstrip("#")
-    return tuple(int(color[i:i + 2], 16) / 255. for i in (0, 2, 4))

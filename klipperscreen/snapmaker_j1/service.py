@@ -14,6 +14,7 @@
 # Klipper.
 import logging
 import os
+from math import cos, pi, sin
 
 import gi
 
@@ -24,7 +25,7 @@ from ks_includes.KlippyGtk import find_widget
 from ks_includes.screen_panel import ScreenPanel
 from ks_includes.widgets.keypad import Keypad
 
-from . import settings
+from . import settings, style
 
 PANEL = "snapmaker_service"
 CONTROL = "snapmaker_menu"
@@ -40,6 +41,30 @@ HEATERS = (("extruder", "Left Nozzle", 220, 0),
 # Load and unload once the nozzle is this close to its target
 READY_MARGIN = 5
 MIN_EXTRUDE_TEMP = 170
+# Temperature rings: the colors of the heaters (as their bars and graph,
+# theme style.conf), the track, the texts
+RING_COLORS = {"extruder": "#ff8a00", "extruder1": "#ffd600",
+               "heater_bed": "#226bff"}
+RING_TRACK = "#4b4d5c"
+# Symbols of Print, Move and Calibration (and their text, theme) larger
+NAV_SCALE = 1.4
+# Duration of the filament slide (ms)
+SLIDE_MS = 250
+
+
+def max_target(printer, heater):
+    # The highest target, as the macros allow it (stock firmware: 300C
+    # nozzles, 100C bed; max_temp of the config is the shutdown limit)
+    state = printer.get_stat("gcode_macro _SNAPMAKER_STATE")
+    key = "max_bed_target" if heater == "heater_bed" else "max_nozzle_target"
+    section = printer.get_config_section(heater) or {}
+    try:
+        limit = float(section.get("max_temp", 300))
+    except (TypeError, ValueError):
+        limit = 300.
+    return min(limit, float(state.get(key) or limit))
+
+
 def _white_icon(themedir, name, size):
     # A theme symbol in white (the theme's greys replaced)
     with open(os.path.join(themedir, name + ".svg")) as f:
@@ -114,29 +139,52 @@ class Panel(ScreenPanel):
         gap = self._gtk.font_size // 2
         width = self._gtk.content_width - 3 * gap
         self.widths = [int(width * c / sum(COLUMNS)) for c in COLUMNS]
-        # One column per part with its main button below it (Print, Move,
-        # Calibration), so both gaps are the same
-        parts = Gtk.Box(spacing=gap, vexpand=True, margin_bottom=gap // 2)
+        # Heaters, loading and unloading, service tasks; each part in a
+        # container of its own (snap-home-part)
         self.parts = []
-        columns = []
+        containers = []
         for part_width in self.widths:
-            part = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
-                           spacing=gap // 2, margin=gap // 2)
             grid = Gtk.Grid(column_homogeneous=True, row_homogeneous=True,
                             vexpand=True, row_spacing=gap // 2,
-                            column_spacing=gap // 2)
-            part.pack_start(grid, True, True, 0)
-            # Each part in a container of its own (snap-home-part)
-            container = Gtk.EventBox()
-            container.get_style_context().add_class("snap-home-part")
-            container.add(part)
-            column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
-                             spacing=gap)
-            column.set_size_request(part_width, -1)
-            column.pack_start(container, True, True, 0)
-            parts.pack_start(column, False, False, 0)
-            columns.append(column)
+                            column_spacing=gap // 2, margin=gap // 2)
+            containers.append(self._container(grid, part_width))
             self.parts.append(grid)
+        # The temperature rings in the place of loading and unloading,
+        # which slide in from the right on a tap on them: a strip of rings,
+        # service tasks and filament, two parts of it shown at a time
+        rings = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
+                        spacing=gap, margin=gap // 2)
+        self.rings = []
+        for heater, name, _default, tool in HEATERS:
+            ring = Gtk.DrawingArea(vexpand=True)
+            ring.connect("draw", self._draw_ring, heater,
+                         "T%d" % tool if tool is not None else _("Bed"))
+            rings.pack_start(ring, True, True, 0)
+            self.rings.append(ring)
+        # A tap on the rings brings in loading and unloading
+        rings_part = self._container(rings, self.widths[1])
+        rings_part.connect("button-release-event",
+                           lambda w, e: self._slide(True))
+        strip = Gtk.Box(spacing=gap)
+        strip.pack_start(rings_part, False, False, 0)
+        strip.pack_start(containers[2], False, False, 0)
+        strip.pack_start(containers[1], False, False, 0)
+        self.scroller = Gtk.ScrolledWindow(
+            hscrollbar_policy=Gtk.PolicyType.EXTERNAL,
+            vscrollbar_policy=Gtk.PolicyType.NEVER, kinetic_scrolling=False)
+        self.scroller.set_size_request(
+            self.widths[1] + gap + self.widths[2], -1)
+        self.scroller.add(strip)
+        self.slide_offset = self.widths[1] + gap
+        self.filament_open = False
+        top = Gtk.Box(spacing=gap, vexpand=True)
+        top.pack_start(containers[0], False, False, 0)
+        top.pack_start(self.scroller, False, False, 0)
+        nav = Gtk.Box(spacing=gap)
+        parts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=gap,
+                        margin_bottom=gap // 2)
+        parts.pack_start(top, True, True, 0)
+        parts.pack_start(nav, False, False, 0)
         for row, (heater, name, _default, tool) in enumerate(HEATERS):
             self._heater_row(row, heater, _(name), tool)
         # Loading and unloading, per nozzle and both at once
@@ -145,11 +193,11 @@ class Panel(ScreenPanel):
                                             (2, _("Both")))):
             self._filament_row(row, tool, name)
         self.buttons = {
-            "nozzles": self._gtk.Button("extruder", _("Nozzle Service"),
-                                        "color1"),
+            # Short names, one line each (the dialogs and the title bar
+            # use the long ones)
+            "nozzles": self._gtk.Button("extruder", _("Service"), "color1"),
             "home": self._gtk.Button("home", _("Home All"), "color2"),
-            "grease": self._gtk.Button("refresh", _("Distribute Grease"),
-                                       "color3"),
+            "grease": self._gtk.Button("refresh", _("Grease"), "color3"),
             # As on the move page: the axes can be moved by hand afterwards
             "motors_off": self._gtk.Button("motor-off", _("Motors Off"),
                                            "color2"),
@@ -177,24 +225,25 @@ class Panel(ScreenPanel):
         for button in (self.buttons["motors_off"], off):
             button.get_style_context().add_class("snap-switch-off")
         # Print, Move and Calibration below the three parts
-        for (icon, label, panel), column in zip((
+        for (icon, label, panel), width in zip((
                 ("resume", _("Print"), "gcodes"),
                 ("move", _("Move"), "move"),
                 ("bed-level", _("Calibration"), CALIBRATION_PANEL)),
-                columns):
-            button = self._gtk.Button(icon, label, None, self.bts,
+                self.widths):
+            # Symbol and text larger than in the small buttons
+            button = self._gtk.Button(icon, label, None, self.bts * NAV_SCALE,
                                       Gtk.PositionType.LEFT, 1)
             button.set_vexpand(False)
-            button.set_size_request(-1, self._gtk.font_size * 4)
+            button.set_size_request(width, self._gtk.font_size * 4)
             # Without the button margin: aligned with the part above
             button.get_style_context().add_class("snap-home-nav")
             button.connect("clicked", self._open, panel, label)
-            column.pack_start(button, False, False, 0)
+            nav.pack_start(button, False, False, 0)
             if panel == "gcodes":
                 # The main task: the orange primary gradient, with a white
                 # symbol (the theme draws it grey)
                 button.get_style_context().add_class("active")
-                size = self._gtk.img_scale * self.bts
+                size = self._gtk.img_scale * self.bts * NAV_SCALE
                 button.set_image(Gtk.Image.new_from_pixbuf(
                     _white_icon(self._gtk.themedir, icon, size)))
         self.page = parts
@@ -245,6 +294,106 @@ class Panel(ScreenPanel):
 
     def _open(self, widget, panel, title):
         self._screen.show_panel(panel, title)
+
+    @staticmethod
+    def _container(child, width):
+        container = Gtk.EventBox()
+        container.get_style_context().add_class("snap-home-part")
+        container.set_size_request(width, -1)
+        container.add(child)
+        return container
+
+    def _draw_ring(self, area, ctx, heater, name):
+        # A gauge as a rainbow over the whole width: the whole arc is the
+        # temperature range of the heater (0 to the highest target), the
+        # colored part the current temperature, the white mark the target
+        if self._printer is None:
+            return
+        import cairo
+        w, h = area.get_allocated_width(), area.get_allocated_height()
+        line = min(h * 0.14, w * 0.08)
+        margin = line * 0.6
+        # A half ellipse: its ends stand upright, as in the stock gauge
+        start, sweep = pi, pi
+        rx = (w / 2 - margin - 3) * 0.81
+        # Some air above and below, the gauge in the middle of its row
+        ry = (h - line) * 0.8
+        cx, cy = w / 2, (h - ry - line) / 2 + ry + line / 2
+        limit = self._max_temp(heater)
+        temp = self._stat(heater, "temperature")
+        target = self._stat(heater, "target")
+        color = style.rgb(RING_COLORS[heater])
+
+        def arc(a0, a1):
+            # The elliptic arc, stroked with an even line width
+            ctx.save()
+            ctx.translate(cx, cy)
+            ctx.scale(rx, ry)
+            ctx.arc(0, 0, 1, a0, a1)
+            ctx.restore()
+            ctx.stroke()
+
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        ctx.set_line_width(line)
+        ctx.set_source_rgb(*style.rgb(RING_TRACK))
+        arc(start, start + sweep)
+        ctx.set_source_rgb(*color)
+        arc(start, start + sweep * min(max(temp / limit, 0.), 1.))
+        if target > 0:
+            a = start + sweep * min(target / limit, 1.)
+            ctx.set_source_rgb(*style.rgb(style.TITLE))
+            ctx.set_line_width(max(2., line * 0.18))
+            # Across the arc (along the normal of the ellipse)
+            x, y = cx + rx * cos(a), cy + ry * sin(a)
+            nx, ny = ry * cos(a), rx * sin(a)
+            n = (nx * nx + ny * ny) ** 0.5 / (line * 0.7)
+            ctx.move_to(x - nx / n, y - ny / n)
+            ctx.line_to(x + nx / n, y + ny / n)
+            ctx.stroke()
+        # The name under the arc, the current temperature with a small
+        # unit below it
+        size = min(ry * 0.45, rx * 0.4)
+        ctx.select_font_face("Roboto", cairo.FONT_SLANT_NORMAL,
+                             cairo.FONT_WEIGHT_BOLD)
+        ctx.set_font_size(size)
+        number = "%.0f" % (temp,)
+        big = ctx.text_extents(number)
+        ctx.select_font_face("Roboto", cairo.FONT_SLANT_NORMAL,
+                             cairo.FONT_WEIGHT_NORMAL)
+        ctx.set_font_size(size * 0.4)
+        # The number centered under the name, the unit beside it
+        x = cx - big.x_advance / 2
+        base = cy + line * 0.3
+        # Green at the target as close as Load waits for
+        text = style.rgb(style.temp_color(temp, target, READY_MARGIN))
+        ctx.set_source_rgb(*text)
+        ctx.move_to(x + big.x_advance, base + big.y_bearing * 0.45)
+        ctx.show_text("°C")
+        ctx.set_source_rgb(*style.rgb(style.EXPLAIN))
+        label = ctx.text_extents(name)
+        ctx.move_to(cx - label.x_advance / 2, cy - ry * 0.45)
+        ctx.show_text(name)
+        ctx.select_font_face("Roboto", cairo.FONT_SLANT_NORMAL,
+                             cairo.FONT_WEIGHT_BOLD)
+        ctx.set_font_size(size)
+        ctx.set_source_rgb(*text)
+        ctx.move_to(x, base)
+        ctx.show_text(number)
+
+    def _slide(self, open_):
+        # Filament in from the right: the service tasks move over the rings
+        self.filament_open = open_
+        self._screen.base_panel.set_control_sensitive(open_, "back")
+        adj = self.scroller.get_hadjustment()
+        begin, end = adj.get_value(), self.slide_offset if open_ else 0
+        t0 = GLib.get_monotonic_time()
+
+        def step():
+            f = min((GLib.get_monotonic_time() - t0) / (SLIDE_MS * 1000.), 1.)
+            adj.set_value(begin + (end - begin) * (1 - (1 - f) ** 3))
+            return f < 1
+
+        GLib.timeout_add(16, step)
 
     def _nozzle_diameter(self, heater):
         section = self._printer.get_config_section(heater) or {}
@@ -334,6 +483,9 @@ class Panel(ScreenPanel):
         if state != self.print_state and state != "standby":
             self._set_serviced(False)
         self.print_state = state
+        # Back closes the filament part (also after a visit to another page)
+        self._screen.base_panel.set_control_sensitive(self.filament_open,
+                                                      "back")
         self._refresh()
 
     def process_update(self, action, data):
@@ -350,7 +502,7 @@ class Panel(ScreenPanel):
         for heater, widgets in self.rows.items():
             temp = self._stat(heater, "temperature")
             current = self._stat(heater, "target")
-            widgets["temp"].set_label("%.1f°C" % (temp,))
+            widgets["temp"].set_label("%.0f°C" % (temp,))
             on = current > 0
             widgets["power"].set_label(_("OFF") if on else _("ON"))
             self._show_target(heater)
@@ -369,6 +521,8 @@ class Panel(ScreenPanel):
         self.ready = dict(ready_all)
         self.ready[2] = all(ready_all.values())
         self._set_ready(self.both, self.ready[2])
+        for ring in self.rings:
+            ring.queue_draw()
         self._screen.base_panel.titlelbl.set_label(self.status())
 
     def status(self):
@@ -402,11 +556,7 @@ class Panel(ScreenPanel):
 
     # Target temperatures
     def _max_temp(self, heater):
-        section = self._printer.get_config_section(heater) or {}
-        try:
-            return float(section.get("max_temp", 300))
-        except (TypeError, ValueError):
-            return 300.
+        return max_target(self._printer, heater)
 
     def _edit(self, widget, heater):
         self.keypad_heater = heater
@@ -442,7 +592,8 @@ class Panel(ScreenPanel):
             return
         self.keypad_heater = None
         self.content.remove(self.edit_box)
-        self._screen.base_panel.set_control_sensitive(False, "back")
+        self._screen.base_panel.set_control_sensitive(self.filament_open,
+                                                      "back")
         self._screen.base_panel.control[CONTROL].show()
         self.content.add(self.page)
         self.content.show_all()
@@ -467,6 +618,9 @@ class Panel(ScreenPanel):
         if self.keypad_heater is not None:
             self._keypad_close()
             return True
+        if self.filament_open:
+            self._slide(False)
+            return True
         return False
 
     def _set_target(self, heater, temp):
@@ -475,7 +629,9 @@ class Panel(ScreenPanel):
 
     def _power(self, widget, heater):
         on = self._stat(heater, "target") > 0
-        self._set_target(heater, 0 if on else self.targets[heater])
+        # A target kept from before the limit applied is cut to it
+        self._set_target(heater, 0 if on else min(
+            self.targets[heater], self._max_temp(heater)))
 
     # Filament, service, homing, grease
     def _filament(self, widget, macro, tool):
@@ -508,11 +664,8 @@ class Panel(ScreenPanel):
 
     def _set_serviced(self, serviced):
         self.serviced = serviced
-        # Two lines: on one line "Park Nozzles" widened the page past the
-        # right screen edge
         self.buttons["nozzles"].set_label(
-            _("Park Nozzles").replace(" ", "\n", 1) if serviced
-            else _("Nozzle Service"))
+            _("Park") if serviced else _("Service"))
 
     def _nozzles(self, widget):
         if self.serviced:

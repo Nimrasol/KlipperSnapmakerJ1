@@ -103,9 +103,11 @@ instead.
 **Heaters** (one row each):
 - **Tile** with the name, the nozzle diameter, the current temperature
   and below it the target (→ 230°C; while the heater is on the one it
-  really heats to, also when a print or the web interface set it).  Tap it to change the target: the
-  keypad shows the current one in grey, and the first digit typed
-  replaces it (whole degrees; ✓ alone keeps it).  Beside it the
+  really heats to, also when a print or the web interface set it).
+  Tap it to change the target: the keypad shows the current one in
+  grey, and the first digit typed replaces it (whole degrees, up to
+  300°C for the nozzles and 100°C for the bed, as the stock firmware;
+  ✓ alone keeps it).  Beside it the
   material presets (PLA, ABS, PETG, FLEX) as tiles set it with one tap.  Back
   closes the keypad.
   The page keeps the target, also after a restart: 220°C for the
@@ -113,6 +115,14 @@ instead.
 - **ON / OFF** (the right end of the tile): switches the heater to its
   target or off.  A heater that is on has an orange frame around the
   tile; a new target applies at once.
+
+**Temperature gauges** (T0, T1, Bed): the arc spans the heater's range
+(0 to its highest target), its colored part is the current
+temperature, a white mark the target.  The number is white without a
+target, red while heating up, green within 5°C of the target and blue
+while cooling down to it.  **Tap the gauges** for loading and
+unloading: the service tasks move over them and Load / Unload come in
+from the right; Back moves them out again.
 
 **Filament** (T0, T1 and Both): **Load / Unload** are available (grey
 before; a tap then says what is missing) once the
@@ -128,13 +138,13 @@ the menu.
 **Controls** (the two switches that turn something off are framed in
 red at the end):
 - **Home All:** homes all axes after a confirmation.
-- **Nozzle Service:** moves both nozzles 75 mm in from their parking
+- **Service:** moves both nozzles 75 mm in from their parking
   positions, clear of the parts there and about 200 mm apart, with the
   bed at least 100 mm below them (homing first if needed).  The button
-  then reads **Park Nozzles** and parks them again.  It does not switch
-  any heater.
-- **Distribute Grease:** after lubricating the rails and lead screws,
-  moves both nozzles, the bed and the Z axis once over their travel
+  then reads **Park** and parks them again.  It does not switch any
+  heater.
+- **Grease:** distributes fresh grease: after lubricating the rails
+  and lead screws, moves both nozzles, the bed and the Z axis once over their travel
   (about a minute; down to 10 mm above the build plate).  The build
   plate has to be empty.  Tap again for another run.
 - **Light:** opens the [Light](#light) page: brightness of the case

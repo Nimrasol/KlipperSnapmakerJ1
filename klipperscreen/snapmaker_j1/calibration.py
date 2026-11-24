@@ -41,12 +41,6 @@ PLATE_STEP = .1
 PID_POLL = 2
 
 
-def _rgb(color):
-    rgba = Gdk.RGBA()
-    rgba.parse(color)
-    return rgba.red, rgba.green, rgba.blue
-
-
 def _find_image(name):
     for d in IMAGE_DIRS:
         for ext in IMAGE_EXTS:
@@ -144,7 +138,7 @@ class HeightIndicator(Gtk.Box):
         cr.set_line_cap(cairo.LINE_CAP_ROUND)
         cr.set_line_width(stroke)
         # Track fading out to both ends
-        r, g, b = _rgb(S.CARD_TOP)
+        r, g, b = S.rgb(S.CARD_TOP)
         track = cairo.LinearGradient(0, 0, w, 0)
         track.add_color_stop_rgba(0., r, g, b, .2)
         track.add_color_stop_rgba(.5, r, g, b, 1.)
@@ -153,7 +147,7 @@ class HeightIndicator(Gtk.Box):
         cr.move_to(10 * dp, y)
         cr.line_to(w - 10 * dp, y)
         cr.stroke()
-        cr.set_source_rgb(*_rgb(S.EXPLAIN))
+        cr.set_source_rgb(*S.rgb(S.EXPLAIN))
         cr.set_line_width(1.5 * dp)
         cr.move_to(mid, y - 11 * dp)
         cr.line_to(mid, y + 11 * dp)
@@ -161,7 +155,7 @@ class HeightIndicator(Gtk.Box):
         if self.value is None:
             return
         v = self.value
-        cr.set_source_rgb(*_rgb(S.PRIMARY))
+        cr.set_source_rgb(*S.rgb(S.PRIMARY))
         cr.set_line_width(stroke)
         left = mid + w * (v - .5 * INDICATOR_VALID)
         cr.move_to(left, y)
@@ -185,7 +179,7 @@ class HeightIndicator(Gtk.Box):
             cr.paint()
             return
         d = 6 * self.dp * (1 if side else -1)
-        cr.set_source_rgb(*_rgb(S.PRIMARY))
+        cr.set_source_rgb(*S.rgb(S.PRIMARY))
         cr.set_line_width(2.5 * self.dp)
         cr.move_to(x - d / 2., y - abs(d))
         cr.line_to(x + d / 2., y)

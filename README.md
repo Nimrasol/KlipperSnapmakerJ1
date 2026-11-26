@@ -24,7 +24,7 @@ If this project is useful to you, you can also
 [buy me a coffee](https://buymeacoffee.com/3pjgRWxRFB).  This helps me to
 keep up my work 🥳  Hope you enjoy it!
 
-<a href="https://buymeacoffee.com/3pjgRWxRFB"><img src="https://img.shields.io/badge/Buy_me_a_coffee-support_this_project-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+<a href="https://www.buymeacoffee.com/3pjgRWxRFB"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=3pjgRWxRFB&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee"></a>
 
 </td>
 </tr>

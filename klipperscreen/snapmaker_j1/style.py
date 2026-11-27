@@ -224,6 +224,9 @@ CSS = """
     border: %(d2)s solid %(body_primary)s;
     min-width: %(d24)s;
     min-height: %(d24)s;
+    /* KlipperScreen's base.css gives radios a margin, and checked ones a padding */
+    margin: 0 4px;
+    padding: 0;
     color: %(title)s;
     -gtk-icon-source: none;
 }

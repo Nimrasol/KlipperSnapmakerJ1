@@ -20,6 +20,23 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
 - **Pause keeps the print page:** a pause no longer opens the extrude
   page over the print page; Resume and Cancel stay on screen.  A
   filament runout still opens the refill dialog.
+- **Z offset saved during a print:** it is kept until the print ends
+  also when the print ends with an error that stops Klipper (heater
+  error, power loss): it is stored at the next start then.  After a
+  power loss it waits for the recovery of the print.
+- **WLAN symbol:** it reads the connection in the background.  When
+  NetworkManager does not answer (for example a hanging WLAN firmware),
+  the touch screen no longer stops for seconds every 5 seconds.
+- **Klipper v0.14.0** (was v0.13.0-827): the new Klipper release.  Over
+  the last version it only adds documentation and code clean-up.  The
+  main controller firmware stays as it is (no Update Firmware needed).
+- **KlipperScreen v0.4.7-229** (was v0.4.7-217): fixes of KlipperScreen,
+  among them drop-down lists that stay open on touch, a WLAN profile
+  that is removed again when its first connection fails (a wrong
+  password is asked for again), double taps on the on-screen keyboard,
+  and numbers of a constant width.  The radio buttons of the
+  calibration pages keep their look.
+- The update manager offers both together with this release.
 
 ## v1.7.0 (2026-11-24)
 

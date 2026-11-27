@@ -546,9 +546,9 @@ Each release is made and tested with the versions listed in its
 
 | Component | Version | Commit | Date |
 | --- | --- | --- | --- |
-| [Klipper](https://github.com/Klipper3d/klipper) | v0.13.0-827-g29d4ec2d | `29d4ec2d` | 2026-11-10 |
+| [Klipper](https://github.com/Klipper3d/klipper) | v0.14.0-1-g7558e8c2 | `7558e8c2` | 2026-11-24 |
 | [Moonraker](https://github.com/Arksine/moonraker) | v0.11.0-4-gb559b9a | `b559b9a8` | 2026-10-21 |
-| [KlipperScreen](https://github.com/KlipperScreen/KlipperScreen) | v0.4.7-217-ga12e8dd | `a12e8dde` | 2026-11-15 |
+| [KlipperScreen](https://github.com/KlipperScreen/KlipperScreen) | v0.4.7-229-g4b31d98 | `4b31d984` | 2026-11-27 |
 | [KlipperSnapmakerJ1-os](https://github.com/Nimrasol/KlipperSnapmakerJ1-os) | Debian 12 (bookworm) armhf, Python 3.11, lk2nd and Linux 6.12 (msm8916-mainline) | | |
 
 What depends on each version, and how it was tested:

@@ -6,9 +6,13 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
 - **MAJOR:** changes that need action from the user, for example a new
   main controller firmware, a new display system or a configuration that
   has to be adapted by hand.
-- **MINOR:** new functions, and moving to newer tested versions of
-  Klipper, Moonraker or KlipperScreen (`versions.conf`).
-- **PATCH:** fixes.
+- **MINOR:** something new the user notices: new functions, pages or
+  settings, or a changed way of using the printer.  Also newer versions
+  of Klipper, Moonraker or KlipperScreen (`versions.conf`) that bring
+  such changes.
+- **PATCH:** everything else: fixes, small improvements of existing
+  functions, and newer versions of Klipper, Moonraker or KlipperScreen
+  that only bring fixes.
 
 ## v1.7.1 (2026-11-27)
 

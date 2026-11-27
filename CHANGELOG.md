@@ -10,7 +10,7 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
   Klipper, Moonraker or KlipperScreen (`versions.conf`).
 - **PATCH:** fixes.
 
-## Unreleased
+## v1.7.1 (2026-11-27)
 
 - **Print end on another page:** when a print ends while another page
   is open over the print page (for example the temperature page while

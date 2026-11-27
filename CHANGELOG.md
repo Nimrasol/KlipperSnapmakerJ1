@@ -12,6 +12,15 @@ released as git tags `vX.Y.Z`.  The update manager shows this version.
 
 ## Unreleased
 
+- **Print end on another page:** when a print ends while another page
+  is open over the print page (for example the temperature page while
+  heating, and the print is cancelled by an error), the touch screen
+  goes back to the print page with the result.  A new print started
+  afterwards no longer shows the print page twice.
+- **Pause keeps the print page:** a pause no longer opens the extrude
+  page over the print page; Resume and Cancel stay on screen.  A
+  filament runout still opens the refill dialog.
+
 ## v1.7.0 (2026-11-24)
 
 - **Cancel from a pause:** a print cancelled while paused (for example

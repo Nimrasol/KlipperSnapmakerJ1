@@ -159,8 +159,8 @@ def init(screen):
     # automatic switch to the job status (and back to the main menu when
     # the print ends) is suppressed while one of them runs
     screen.snapmaker_calibration_print = False
-    # The extrude panel was opened by a pause (closed when the print ends)
-    screen.snapmaker_pause_extrude = False
+    # A print ran (printing or paused) since Klipper was last ready
+    screen.snapmaker_print_active = False
     state_printing = screen.state_printing
     state_ready = screen.state_ready
 
@@ -175,16 +175,17 @@ def init(screen):
                 and not name.startswith(calibration.F.GCODE_DIR + "/")):
             screen.snapmaker_calibration_print = False
         if not screen.snapmaker_calibration_print:
+            screen.snapmaker_print_active = True
             state_printing()
 
     def _state_ready(wait=True):
-        # A pause that ended the print (cancelled from the paused state, eg
-        # in Mainsail): the extrude panel of the pause goes, the print page
-        # with the result shows again
-        if (screen.snapmaker_pause_extrude and screen._cur_panels
-                and screen._cur_panels[-1] == "extrude"):
-            screen._menu_go_back()
-        screen.snapmaker_pause_extrude = False
+        # A print ended (finished, cancelled, or cancelled by an error): the
+        # pages opened over the print page (temperature, the extrude page of
+        # a pause) go, the print page with the result shows again
+        if screen.snapmaker_print_active and "job_status" in screen._cur_panels:
+            while screen._cur_panels[-1] != "job_status":
+                screen._menu_go_back()
+        screen.snapmaker_print_active = False
         screen.snapmaker_case_light.klipper_ready()
         screen.snapmaker_update_notice.klipper_ready()
         screen.snapmaker_addon_reload.klipper_ready()
@@ -219,8 +220,8 @@ def init(screen):
                 # The calibration page has its own Resume (KlipperScreen
                 # would put its extrude panel over it)
                 if not screen.snapmaker_calibration_print:
+                    screen.snapmaker_print_active = True
                     state_paused()
-                    screen.snapmaker_pause_extrude = True
                 return
             screen.state_printing()
             screen.show_panel(FILAMENT_PANEL, _("Filament"))

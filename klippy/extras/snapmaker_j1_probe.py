@@ -30,6 +30,8 @@ HEIGHT_VALID_RANGE = 0.08
 LIVE_RETRACT = 2.
 # Thickest build plate SNAPMAKER_SET_PLATE_THICKNESS accepts (mm)
 MAX_PLATE_THICKNESS = 10.
+# Z offset saved during a print, stored when the print ends
+PENDING_Z_VARIABLE = 'snap_j1_pending_z_offset'
 # Extra Z travel below position_min during a calibration session, so the
 # touches find the bed also with a Z origin that is several mm wrong
 CAL_Z_EXTRA = 10.
@@ -429,6 +431,9 @@ class SnapmakerJ1Probe:
         # The Z offset (baby stepping) saved by the web interface or the
         # touch screen goes into the Z origin too, see _apply_z_offset
         self.pending_z_offset = None
+        # The pending offset came back from save_variables after a restart
+        # (the print ended in a shutdown, where it could not be stored)
+        self.pending_z_restored = False
         self.printer.register_event_handler('klippy:connect',
                                             self._replace_z_offset_apply)
         self.printer.register_event_handler('klippy:ready',
@@ -908,6 +913,13 @@ class SnapmakerJ1Probe:
                 variables.get('snap_j1_z_saved_offset', 0.))
         except (TypeError, ValueError):
             self.z_saved_offset = 0.
+        try:
+            pending = variables.get(PENDING_Z_VARIABLE)
+            if pending is not None:
+                self.pending_z_offset = float(pending)
+                self.pending_z_restored = True
+        except (TypeError, ValueError):
+            logging.exception("Pending Z offset not applied")
     def _set_rail_endstop(self, rail, endstop):
         # The J1 homes Z and the right carriage to their maximum, so the
         # endstop position doubles as the travel limit
@@ -1026,8 +1038,16 @@ class SnapmakerJ1Probe:
             return False
         eventtime = self.printer.get_reactor().monotonic()
         return stats.get_status(eventtime)['state'] in ('printing', 'paused')
+    def _recovery_pending(self):
+        # A restored offset waits for the power loss recovery: a resumed
+        # print gets its Z offset back, which this offset is part of
+        power_loss = self.printer.lookup_object('snapmaker_j1_power_loss',
+                                                None)
+        return (self.pending_z_restored and power_loss is not None
+                and power_loss.pending is not None)
     def _check_z_offset_pending(self, eventtime):
-        if self.pending_z_offset is None or self._printing():
+        if (self.pending_z_offset is None or self._printing()
+                or self.printer.is_shutdown() or self._recovery_pending()):
             return eventtime + 1.
         gcode = self.printer.lookup_object('gcode')
         # Not in the middle of a command (the end of print macro starts at
@@ -1047,12 +1067,25 @@ class SnapmakerJ1Probe:
                 gcode.respond_info(msg)
         self._store_z_origin(Respond(), offset)
         self._set_z_saved_offset(self.z_saved_offset + offset)
-        # Klipper's own command: the offset goes back to 0 also when Z is
-        # no longer homed (motors off after the print)
-        adjust = "%.3f" % (-offset,)
-        self.set_gcode_offset(gcode.create_gcode_command(
-            "SET_GCODE_OFFSET", "SET_GCODE_OFFSET Z_ADJUST=" + adjust,
-            {'Z_ADJUST': adjust}))
+        # After a restart the Z offset is 0, unless a resumed print brought
+        # it back: only then it holds the stored offset
+        gcode_move = self.printer.lookup_object('gcode_move')
+        restored_away = (self.pending_z_restored and abs(
+            gcode_move.get_status()['homing_origin'].z) < 0.0005)
+        if not restored_away:
+            # Klipper's own command: the offset goes back to 0 also when Z
+            # is no longer homed (motors off after the print)
+            adjust = "%.3f" % (-offset,)
+            self.set_gcode_offset(gcode.create_gcode_command(
+                "SET_GCODE_OFFSET", "SET_GCODE_OFFSET Z_ADJUST=" + adjust,
+                {'Z_ADJUST': adjust}))
+        self._clear_pending_z()
+    def _clear_pending_z(self):
+        svv = self.printer.lookup_object('save_variables', None)
+        if svv is not None and svv.allVariables.get(PENDING_Z_VARIABLE) \
+                is not None:
+            self._save_variable(PENDING_Z_VARIABLE, "None")
+        self.pending_z_restored = False
     # Its messages must not contain "SAVE_CONFIG": KlipperScreen opens its
     # "Save configuration?" dialog for every message with that word
     cmd_Z_OFFSET_APPLY_help = (
@@ -1065,6 +1098,9 @@ class SnapmakerJ1Probe:
             return
         if self._printing():
             self.pending_z_offset = offset
+            # Kept on disk as well: a print ending in a shutdown cannot
+            # store it, and a restart would lose it
+            self._save_variable(PENDING_Z_VARIABLE, "%.3f" % (offset,))
             gcmd.respond_info("Z offset %.3f is stored when the print ends"
                               % (offset,))
             return

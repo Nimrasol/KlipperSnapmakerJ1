@@ -69,7 +69,9 @@ class Printer:
         return types.SimpleNamespace(monotonic=lambda: 0.)
     def run_script_from_command(self, script):
         words = dict(w.split("=", 1) for w in script.split()[1:])
-        self.saved[words["VARIABLE"]] = float(words["VALUE"])
+        value = words["VALUE"]
+        self.saved[words["VARIABLE"]] = None if value == "None" else float(
+            value)
 
 
 class Gcmd:
@@ -120,6 +122,40 @@ class ZOrigin(unittest.TestCase):
         # Outside a calibration session the travel range applies
         p.cal_active = False
         self.assertAlmostEqual(p._limited_target(2, -1, 50.)[2], -5.)
+
+
+class PendingZOffset(unittest.TestCase):
+    # A Z offset saved during a print that ended in a shutdown comes back
+    # from save_variables after the restart
+    def apply(self, gcode_z):
+        p = make_probe(10.)
+        p.z_saved_offset = 0.
+        p.pending_z_restored = True
+        adjusts = []
+        p.set_gcode_offset = lambda gcmd: adjusts.append(gcmd)
+        p.printer.objects["gcode_move"] = types.SimpleNamespace(
+            get_status=lambda: {"homing_origin": types.SimpleNamespace(
+                z=gcode_z)})
+        p.printer.objects["save_variables"] = types.SimpleNamespace(
+            allVariables={j1probe.PENDING_Z_VARIABLE: 0.05})
+        gcode = types.SimpleNamespace(
+            respond_info=lambda msg: None,
+            create_gcode_command=lambda *args: args)
+        p._apply_z_offset(gcode, 0.05)
+        saved = p.printer.saved
+        self.assertAlmostEqual(saved["snap_j1_z_endstop"], ENDSTOP - 0.05)
+        self.assertIsNone(saved[j1probe.PENDING_Z_VARIABLE])
+        self.assertFalse(p.pending_z_restored)
+        return adjusts
+
+    def test_without_resume_only_the_origin_moves(self):
+        # The Z offset is 0 after the restart: setting it to -0.05 would
+        # cancel the stored offset
+        self.assertEqual(self.apply(0.), [])
+
+    def test_after_a_resumed_print_the_offset_goes_back(self):
+        # The power loss recovery restored the Z offset of the print
+        self.assertEqual(len(self.apply(0.05)), 1)
 
 
 if __name__ == "__main__":
